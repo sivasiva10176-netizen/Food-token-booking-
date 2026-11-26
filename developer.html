@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Siva Food - Developer Portal</title>
+<style>
+  :root { --primary: #1A1A2E; --accent: #FF6B35; --accent2: #E94560; --light: #F0F0F0; --white: #FFFFFF; --gray: #6C757D; --border: #DEE2E6; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 10px; }
+  .app-container { width: 100%; max-width: 420px; background: var(--white); border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); overflow: hidden; min-height: 90vh; }
+  .app-header { background: linear-gradient(135deg, #1A1A2E, #16213E); color: white; padding: 24px 20px 20px; text-align: center; position: relative; border-bottom: 4px solid var(--accent); }
+  .app-logo { font-size: 36px; margin-bottom: 6px; }
+  .app-title { font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+  .app-subtitle { font-size: 11px; opacity: 0.65; margin-top: 4px; }
+  .header-badge { position: absolute; top: 12px; right: 12px; background: var(--accent2); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; color: white; }
+  .screen { display: none; padding: 24px 20px; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-control { width: 100%; padding: 13px 15px; border: 2px solid var(--border); border-radius: 12px; font-size: 15px; color: var(--primary); background: var(--light); transition: all 0.2s; outline: none; }
+  .form-control:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 4px rgba(255,107,53,0.1); }
+  .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .btn:active { transform: scale(0.97); }
+  .btn-dev { background: linear-gradient(135deg, #1A1A2E, #16213E); color: white; }
+  .btn-accent { background: linear-gradient(135deg, #FF6B35, #e55a26); color: white; margin-top: 10px; }
+  .btn-success { background: linear-gradient(135deg, #27AE60, #219a52); color: white; }
+  .btn-danger { background: linear-gradient(135deg, #E74C3C, #c0392b); color: white; margin-top: 10px; }
+  .btn-warning { background: linear-gradient(135deg, #F39C12, #d68910); color: white; margin-top: 10px; }
+  .btn-info { background: linear-gradient(135deg, #3498DB, #2980b9); color: white; margin-top: 10px; }
+  .btn-sm { padding: 10px; font-size: 14px; border-radius: 10px; margin-top: 0; }
+  .btn-outline { background: transparent; border: 2px solid var(--accent); color: var(--accent); margin-top: 10px; }
+  .alert { padding: 12px 15px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; font-weight: 500; }
+  .alert-success { background: #d4edda; color: #155724; border-left: 4px solid #27AE60; }
+  .alert-error { background: #f8d7da; color: #721c24; border-left: 4px solid #E74C3C; }
+  .alert-info { background: #cce5ff; color: #004085; border-left: 4px solid #007bff; }
+  .alert-warning { background: #fff3cd; color: #856404; border-left: 4px solid #F39C12; }
+  .nav-tabs { display: flex; background: var(--light); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; }
+  .nav-tab { flex: 1; padding: 10px 4px; border: none; border-radius: 10px; background: transparent; font-size: 11px; font-weight: 600; color: var(--gray); cursor: pointer; transition: all 0.2s; text-align: center; }
+  .nav-tab.active { background: white; color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .section-title { font-size: 19px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+  .section-subtitle { font-size: 13px; color: var(--gray); margin-bottom: 16px; }
+  .dev-card { background: linear-gradient(135deg, #1A1A2E, #0F3460); border-radius: 16px; padding: 16px; color: white; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+  .dev-avatar { width: 52px; height: 52px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .otp-banner { position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-100%); width: min(420px, 100vw); background: linear-gradient(135deg, #1A1A2E, #0F3460); color: white; padding: 14px 20px; border-radius: 0 0 20px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); z-index: 9999; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; gap: 12px; }
+  .otp-banner.show { transform: translateX(-50%) translateY(0); }
+  .otp-banner-code { font-size: 22px; font-weight: 900; color: var(--accent); letter-spacing: 4px; margin-top: 2px; }
+  .otp-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .otp-row .form-control { text-align: center; font-size: 20px; font-weight: 700; padding: 12px 6px; }
+  .setting-panel { background: var(--light); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1.5px solid var(--border); }
+  .setting-panel-title { font-size: 14px; font-weight: 800; color: var(--primary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .data-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .data-row:last-child { border-bottom: none; }
+  .data-label { color: var(--gray); font-weight: 600; }
+  .data-value { font-weight: 700; color: var(--primary); }
+  .danger-zone { background: #fff5f5; border: 2px solid #E74C3C; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+  .danger-zone-title { font-size: 14px; font-weight: 800; color: #E74C3C; margin-bottom: 12px; }
+  .pwd-row { position: relative; }
+  .toggle-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; }
+  .stat-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .stat-mini { background: var(--light); border-radius: 12px; padding: 12px 8px; text-align: center; border: 1.5px solid var(--border); }
+  .stat-mini-num { font-size: 22px; font-weight: 900; color: var(--primary); }
+  .stat-mini-label { font-size: 10px; color: var(--gray); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+  .log-entry { font-family: monospace; font-size: 11px; background: #1A1A2E; color: #00ff88; padding: 10px; border-radius: 10px; margin-bottom: 8px; max-height: 150px; overflow-y: auto; line-height: 1.6; }
+  .bottom-pad { height: 20px; }
+</style>
+</head>
+<body>
+
+<div class="otp-banner" id="otpBanner">
+  <div style="font-size:28px;">🔐</div>
+  <div style="flex:1;">
+    <div style="font-size:11px;opacity:0.7;">🛡️ Siva Food Developer</div>
+    <div style="font-size:14px;font-weight:600;">Developer Auth OTP:</div>
+    <div class="otp-banner-code" id="bannerOtpCode">------</div>
+  </div>
+  <button style="background:var(--accent);color:white;border:none;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;" onclick="autoFillDevOTP()">⚡ Auto-Fill</button>
+</div>
+
+<div class="app-container">
+  <div class="app-header">
+    <div class="app-logo">⚙️</div>
+    <div class="app-title" id="appTitleHeader">SIVA FOOD</div>
+    <div class="app-subtitle">Developer Control Panel</div>
+    <div class="header-badge">DEV</div>
+  </div>
+
+  <!-- SCREEN: DEV LOGIN -->
+  <div class="screen active" id="screen-devlogin">
+    <br>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:60px;">🛠️</div>
+      <div class="section-title" style="text-align:center;">Developer Login</div>
+      <div class="section-subtitle" style="text-align:center;">Highest authority access only</div>
+    </div>
+    <div id="devLoginAlert"></div>
+    <div class="form-group"><label class="form-label">Developer User ID</label><input type="text" class="form-control" id="dev-uid" placeholder="Enter developer ID"></div>
+    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-control" id="dev-pwd" placeholder="Enter password"></div>
+    <div class="form-group"><label class="form-label">Mobile Number (for OTP)</label><input type="tel" class="form-control" id="dev-mobile-input" placeholder="10-digit mobile" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+    <button class="btn btn-dev" onclick="devLoginStep1()">🔐 Continue to OTP</button>
+
+    <div id="dev-otp-section" style="display:none; margin-top:16px;">
+      <div class="form-group">
+        <label class="form-label">OTP Verification</label>
+        <div class="otp-row">
+          <input type="tel" class="form-control" maxlength="1" id="dotp1" oninput="otpNext(this,'dotp2')">
+          <input type="tel" class="form-control" maxlength="1" id="dotp2" oninput="otpNext(this,'dotp3')">
+          <input type="tel" class="form-control" maxlength="1" id="dotp3" oninput="otpNext(this,'dotp4')">
+          <input type="tel" class="form-control" maxlength="1" id="dotp4" oninput="otpNext(this,'dotp5')">
+          <input type="tel" class="form-control" maxlength="1" id="dotp5" oninput="otpNext(this,'dotp6')">
+          <input type="tel" class="form-control" maxlength="1" id="dotp6">
+        </div>
+        <button class="btn btn-success" onclick="devLoginOTP()">✅ Verify & Login</button>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- SCREEN: DEV DASHBOARD -->
+  <div class="screen" id="screen-devdash">
+    <div class="dev-card">
+      <div class="dev-avatar">🛠️</div>
+      <div>
+        <div style="font-size:16px;font-weight:700;">Developer Mode</div>
+        <div style="font-size:12px;opacity:0.7;">Full System Authority</div>
+        <div style="font-size:11px;background:rgba(255,107,53,0.3);border-radius:6px;padding:2px 8px;margin-top:4px;display:inline-block;" id="devDisplayId">ID: DEV001</div>
+      </div>
+    </div>
+
+    <div class="stat-overview-grid" id="devStatGrid">
+      <div class="stat-mini"><div class="stat-mini-num" id="dstat-users">0</div><div class="stat-mini-label">Users</div></div>
+      <div class="stat-mini"><div class="stat-mini-num" id="dstat-tickets">0</div><div class="stat-mini-label">Tokens</div></div>
+      <div class="stat-mini"><div class="stat-mini-num" id="dstat-active">0</div><div class="stat-mini-label">Active</div></div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="devTab('system',this)">🖥️ System</button>
+      <button class="nav-tab" onclick="devTab('admin',this)">🔑 Admin</button>
+      <button class="nav-tab" onclick="devTab('branding',this)">🎨 Brand</button>
+      <button class="nav-tab" onclick="devTab('data',this)">📊 Data</button>
+    </div>
+
+    <div id="dtab-system">
+      <div class="section-title">🖥️ System Overview</div>
+      <div class="section-subtitle">Live system status and configuration</div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">📋 System Info</div>
+        <div class="data-row"><span class="data-label">App Name</span><span class="data-value" id="sys-appname">SIVA FOOD</span></div>
+        <div class="data-row"><span class="data-label">Admin ID</span><span class="data-value" id="sys-adminid">---</span></div>
+        <div class="data-row"><span class="data-label">Admin Mobile</span><span class="data-value" id="sys-adminmobile">---</span></div>
+        <div class="data-row"><span class="data-label">Total Users</span><span class="data-value" id="sys-totalusers">0</span></div>
+        <div class="data-row"><span class="data-label">Total Tokens</span><span class="data-value" id="sys-totaltickets">0</span></div>
+        <div class="data-row"><span class="data-label">DB Size</span><span class="data-value" id="sys-dbsize">0 KB</span></div>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">📡 Activity Log</div>
+        <div class="log-entry" id="activityLog">> System initialized...<br>> Developer portal loaded</div>
+        <button class="btn btn-dev btn-sm" onclick="clearLog()" style="margin-top:8px;">🗑️ Clear Log</button>
+      </div>
+      <button class="btn btn-info" onclick="refreshSystemInfo()">🔄 Refresh System Info</button>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="dtab-admin" style="display:none;">
+      <div class="section-title">🔑 Admin Credentials</div>
+      <div class="section-subtitle">Change admin login details</div>
+      <div id="adminCredAlert"></div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">👤 Current Admin Info</div>
+        <div class="data-row"><span class="data-label">Admin User ID</span><span class="data-value" id="curr-admin-uid">---</span></div>
+        <div class="data-row"><span class="data-label">Admin Password</span><span class="data-value">••••••••</span></div>
+        <div class="data-row"><span class="data-label">Mobile</span><span class="data-value" id="curr-admin-mobile">---</span></div>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">✏️ Update Admin Credentials</div>
+        <div class="form-group"><label class="form-label">New Admin User ID</label><input type="text" class="form-control" id="new-admin-uid" placeholder="Enter new admin ID"></div>
+        <div class="form-group"><label class="form-label">New Password</label><div class="pwd-row"><input type="password" class="form-control" id="new-admin-pwd" placeholder="Enter new password"><button class="toggle-eye" onclick="togglePwd('new-admin-pwd',this)">👁️</button></div></div>
+        <div class="form-group"><label class="form-label">Admin Mobile Number</label><input type="tel" class="form-control" id="new-admin-mobile" placeholder="10-digit mobile" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+        <button class="btn btn-success btn-sm" onclick="updateAdminCreds()" style="margin-top:8px;">💾 Update Admin Credentials</button>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">🛠️ Change Developer Credentials</div>
+        <div class="form-group"><label class="form-label">New Dev User ID</label><input type="text" class="form-control" id="new-dev-uid" placeholder="Enter new dev ID"></div>
+        <div class="form-group"><label class="form-label">New Dev Password</label><div class="pwd-row"><input type="password" class="form-control" id="new-dev-pwd" placeholder="Enter new password"><button class="toggle-eye" onclick="togglePwd('new-dev-pwd',this)">👁️</button></div></div>
+        <div class="form-group"><label class="form-label">New Dev Mobile</label><input type="tel" class="form-control" id="new-dev-mobile" placeholder="10-digit mobile" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+        <button class="btn btn-dev btn-sm" onclick="updateDevCreds()" style="margin-top:8px;">🔄 Update Developer Credentials</button>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="dtab-branding" style="display:none;">
+      <div class="section-title">🎨 Branding & Customization</div>
+      <div class="section-subtitle">Change system name and appearance</div>
+      <div id="brandingAlert"></div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">🏷️ System Name</div>
+        <div class="form-group"><label class="form-label">Food Token System Name</label><input type="text" class="form-control" id="new-app-name" placeholder="e.g. SIVA FOOD" value="SIVA FOOD"></div>
+        <button class="btn btn-accent btn-sm" onclick="changeAppName()" style="margin-top:8px;">✅ Apply Name Change</button>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">📋 Shift Meal Configuration</div>
+        <div class="data-row"><span class="data-label">General Shift</span><span class="data-value">🍽️ Dinner – 7:30 PM</span></div>
+        <div class="data-row"><span class="data-label">First Shift</span><span class="data-value">🍽️ Dinner – 7:30 PM</span></div>
+        <div class="data-row"><span class="data-label">Second Shift</span><span class="data-value">🥐 Breakfast – 7:30 AM</span></div>
+        <div class="data-row"><span class="data-label">Night Shift</span><span class="data-value">🍱 Lunch – 12:30 PM</span></div>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">🏭 Department List</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Store</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Mission</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Foundry</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">LPDC</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Paint</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Whouse</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Planning</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">Manufacturing</span>
+          <span style="background:rgba(255,107,53,0.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;">EEPD</span>
+        </div>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="dtab-data" style="display:none;">
+      <div class="section-title">📊 Data Management</div>
+      <div class="section-subtitle">Export, backup, and manage all data</div>
+      <div id="dataAlert"></div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">📤 Export Data</div>
+        <button class="btn btn-info btn-sm" onclick="exportAllUsers()">👥 Export All Users (CSV)</button>
+        <button class="btn btn-accent btn-sm" onclick="exportAllTickets()" style="margin-top:8px;">🎫 Export All Tokens (CSV)</button>
+        <button class="btn btn-dev btn-sm" onclick="exportBackup()" style="margin-top:8px;">💾 Full Backup (JSON)</button>
+      </div>
+      <div class="setting-panel">
+        <div class="setting-panel-title">📥 Restore Data</div>
+        <div class="form-group" style="margin-bottom:8px;"><label class="form-label">Paste JSON Backup</label><textarea class="form-control" id="restore-json" rows="4" placeholder='{"users":[...],"tickets":[...]}'></textarea></div>
+        <button class="btn btn-warning btn-sm" onclick="restoreBackup()" style="margin-top:4px;">📥 Restore from Backup</button>
+      </div>
+      <div class="danger-zone">
+        <div class="danger-zone-title">⚠️ Danger Zone</div>
+        <button class="btn btn-danger btn-sm" onclick="clearAllTickets()">🗑️ Clear All Tokens</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAllUsers()" style="margin-top:8px;">👥 Clear All Users</button>
+        <button class="btn btn-danger btn-sm" onclick="resetEntireSystem()" style="margin-top:8px;">💥 FULL SYSTEM RESET</button>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="devLogout()">🚪 Logout</button>
+    <div class="bottom-pad"></div>
+  </div>
+</div>
+
+<script>
+let DB = {
+  users: JSON.parse(localStorage.getItem('sivafood_users') || '[]'),
+  tickets: JSON.parse(localStorage.getItem('sivafood_tickets') || '[]'),
+  settings: JSON.parse(localStorage.getItem('sivafood_settings') || '{"appName":"SIVA FOOD"}'),
+  adminCreds: JSON.parse(localStorage.getItem('sivafood_admin') || '{"uid":"ADMIN001","pwd":"admin@123","mobile":"9999999999"}'),
+  devCreds: JSON.parse(localStorage.getItem('sivafood_dev') || '{"uid":"DEV001","pwd":"dev@2024","mobile":"8888888888"}')
+};
+let _devOTP = '';
+let _devLoggedIn = false;
+let _logLines = [];
+
+function saveDB() {
+  localStorage.setItem('sivafood_users', JSON.stringify(DB.users));
+  localStorage.setItem('sivafood_tickets', JSON.stringify(DB.tickets));
+  localStorage.setItem('sivafood_settings', JSON.stringify(DB.settings));
+  localStorage.setItem('sivafood_admin', JSON.stringify(DB.adminCreds));
+  localStorage.setItem('sivafood_dev', JSON.stringify(DB.devCreds));
+}
+function reloadDB() {
+  DB.users = JSON.parse(localStorage.getItem('sivafood_users') || '[]');
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  DB.settings = JSON.parse(localStorage.getItem('sivafood_settings') || '{"appName":"SIVA FOOD"}');
+  DB.adminCreds = JSON.parse(localStorage.getItem('sivafood_admin') || '{"uid":"ADMIN001","pwd":"admin@123","mobile":"9999999999"}');
+  DB.devCreds = JSON.parse(localStorage.getItem('sivafood_dev') || '{"uid":"DEV001","pwd":"dev@2024","mobile":"8888888888"}');
+}
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function showAlert(elId, type, msg) { const el = document.getElementById(elId); if (!el) return; el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`; setTimeout(() => { if(el) el.innerHTML = ''; }, 5000); }
+function devTab(tab, btn) {
+  ['system','admin','branding','data'].forEach(t => { const el = document.getElementById('dtab-'+t); if (el) el.style.display = t === tab ? 'block' : 'none'; });
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active')); btn.classList.add('active');
+  if (tab === 'system') refreshSystemInfo();
+  if (tab === 'admin') refreshAdminInfo();
+  if (tab === 'branding') document.getElementById('new-app-name').value = DB.settings.appName || 'SIVA FOOD';
+}
+function otpNext(el, nextId) { el.value = el.value.replace(/\D/g,''); if (el.value.length === 1 && nextId) document.getElementById(nextId)?.focus(); }
+function getOTPValue(prefix) { let val = ''; for(let i=1;i<=6;i++) val += (document.getElementById(prefix+i)?.value||''); return val; }
+function generateOTP() { return String(Math.floor(100000 + Math.random() * 900000)); }
+function showOTPBanner(code) {
+  document.getElementById('bannerOtpCode').textContent = code;
+  const b = document.getElementById('otpBanner'); b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 8000);
+}
+function autoFillDevOTP() {
+  if (!_devOTP) return;
+  for (let i = 1; i <= 6; i++) { const inp = document.getElementById('dotp' + i); if (inp) inp.value = _devOTP[i - 1] || ''; }
+  document.getElementById('otpBanner').classList.remove('show');
+}
+function togglePwd(id, btn) { const el = document.getElementById(id); if (!el) return; if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; } else { el.type = 'password'; btn.textContent = '👁️'; } }
+function addLog(msg) { const now = new Date().toLocaleTimeString(); _logLines.push(`[${now}] ${msg}`); if (_logLines.length > 50) _logLines.shift(); const el = document.getElementById('activityLog'); if (el) el.innerHTML = _logLines.map(l => '> ' + l).join('<br>'); }
+function clearLog() { _logLines = []; const el = document.getElementById('activityLog'); if (el) el.innerHTML = '> Log cleared...'; }
+
+function devLoginStep1() {
+  const uid = document.getElementById('dev-uid').value.trim();
+  const pwd = document.getElementById('dev-pwd').value;
+  const mobile = document.getElementById('dev-mobile-input').value;
+  if (!uid || !pwd) return showAlert('devLoginAlert','error','⚠️ Enter Developer ID and Password.');
+  if (uid !== DB.devCreds.uid || pwd !== DB.devCreds.pwd) return showAlert('devLoginAlert','error','❌ Invalid Developer credentials.');
+  if (mobile.length !== 10) return showAlert('devLoginAlert','error','⚠️ Enter valid 10-digit mobile number for OTP.');
+  _devOTP = generateOTP();
+  showOTPBanner(_devOTP);
+  document.getElementById('dev-otp-section').style.display = 'block';
+  showAlert('devLoginAlert','info','📩 OTP sent! Check the SMS banner above.');
+}
+function devLoginOTP() {
+  const entered = getOTPValue('dotp');
+  if (entered !== _devOTP) return showAlert('devLoginAlert','error','❌ Incorrect OTP.');
+  _devOTP = ''; _devLoggedIn = true;
+  document.getElementById('devDisplayId').textContent = 'ID: ' + DB.devCreds.uid;
+  reloadDB(); refreshDevStats(); refreshSystemInfo(); addLog('Developer logged in');
+  showScreen('screen-devdash');
+}
+function devLogout() { _devLoggedIn = false; addLog('Developer logged out'); showScreen('screen-devlogin'); }
+function refreshDevStats() {
+  reloadDB();
+  document.getElementById('dstat-users').textContent = DB.users.length;
+  document.getElementById('dstat-tickets').textContent = DB.tickets.length;
+  document.getElementById('dstat-active').textContent = DB.tickets.filter(t => !t.cancelled && !t.used).length;
+}
+function refreshSystemInfo() {
+  reloadDB();
+  document.getElementById('sys-appname').textContent = DB.settings.appName || 'SIVA FOOD';
+  document.getElementById('sys-adminid').textContent = DB.adminCreds.uid || '---';
+  document.getElementById('sys-adminmobile').textContent = DB.adminCreds.mobile || '---';
+  document.getElementById('sys-totalusers').textContent = DB.users.length;
+  document.getElementById('sys-totaltickets').textContent = DB.tickets.length;
+  const size = new Blob([JSON.stringify(localStorage)]).size;
+  document.getElementById('sys-dbsize').textContent = (size / 1024).toFixed(2) + ' KB';
+  refreshDevStats(); addLog('System info refreshed');
+}
+function refreshAdminInfo() { reloadDB(); document.getElementById('curr-admin-uid').textContent = DB.adminCreds.uid; document.getElementById('curr-admin-mobile').textContent = DB.adminCreds.mobile; }
+function updateAdminCreds() {
+  const uid = document.getElementById('new-admin-uid').value.trim();
+  const pwd = document.getElementById('new-admin-pwd').value;
+  const mobile = document.getElementById('new-admin-mobile').value;
+  if (uid) DB.adminCreds.uid = uid;
+  if (pwd) DB.adminCreds.pwd = pwd;
+  if (mobile) { if (mobile.length !== 10) return showAlert('adminCredAlert','error','⚠️ Admin mobile must be 10 digits.'); DB.adminCreds.mobile = mobile; }
+  saveDB(); refreshAdminInfo(); refreshSystemInfo(); addLog('Admin credentials updated');
+  showAlert('adminCredAlert','success','✅ Admin credentials updated!');
+}
+function updateDevCreds() {
+  const uid = document.getElementById('new-dev-uid').value.trim();
+  const pwd = document.getElementById('new-dev-pwd').value;
+  const mobile = document.getElementById('new-dev-mobile').value;
+  if (uid) DB.devCreds.uid = uid;
+  if (pwd) DB.devCreds.pwd = pwd;
+  if (mobile) { if (mobile.length !== 10) return showAlert('adminCredAlert','error','⚠️ Dev mobile must be 10 digits.'); DB.devCreds.mobile = mobile; }
+  saveDB(); document.getElementById('devDisplayId').textContent = 'ID: ' + DB.devCreds.uid; addLog('Developer credentials updated');
+  showAlert('adminCredAlert','success','✅ Developer credentials updated!');
+}
+function changeAppName() {
+  const name = document.getElementById('new-app-name').value.trim();
+  if (!name) return showAlert('brandingAlert','error','⚠️ Enter a valid app name.');
+  DB.settings.appName = name; saveDB();
+  document.getElementById('appTitleHeader').textContent = name;
+  document.title = name + ' - Developer Portal';
+  addLog('App name changed to: ' + name);
+  showAlert('brandingAlert','success','✅ App name changed to "' + name + '"! Reflected across all portals.');
+}
+function exportAllUsers() {
+  reloadDB(); if (!DB.users.length) return showAlert('dataAlert','warning','⚠️ No users to export.');
+  const headers = ['User ID','Name','DOB','Department','Room','Shift','Mobile','Verified','Registered At'];
+  const rows = DB.users.map(u => [u.userid, u.username, u.dob, u.dept, u.room || 'N/A', u.shift, u.mobile, u.verified ? 'Verified' : 'Pending', new Date(u.createdAt).toLocaleString()]);
+  downloadCSV(headers, rows, 'SivaFood_Users_All.csv'); addLog('Exported all users to CSV');
+  showAlert('dataAlert','success','✅ Users exported successfully!');
+}
+function exportAllTickets() {
+  reloadDB(); if (!DB.tickets.length) return showAlert('dataAlert','warning','⚠️ No tickets to export.');
+  const headers = ['Token ID','Name','User ID','Dept','Room','Shift','Date','Meal','Meal Time','Status','Booked At'];
+  const rows = DB.tickets.map(t => [t.id, t.username, t.userid, t.dept, t.room || 'N/A', t.shift, t.date, t.meal, t.mealTime, t.cancelled ? 'Cancelled' : t.used ? 'Used' : 'Active', new Date(t.bookedAt).toLocaleString()]);
+  downloadCSV(headers, rows, 'SivaFood_Tokens_All.csv'); addLog('Exported all tokens to CSV');
+  showAlert('dataAlert','success','✅ All tokens exported!');
+}
+function downloadCSV(headers, rows, filename) {
+  let csv = headers.join(',') + '\n';
+  rows.forEach(row => { csv += row.map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(',') + '\n'; });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+function exportBackup() {
+  reloadDB();
+  const backup = { users: DB.users, tickets: DB.tickets, settings: DB.settings, adminCreds: DB.adminCreds, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'SivaFood_Backup_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); URL.revokeObjectURL(url);
+  addLog('Full backup exported'); showAlert('dataAlert','success','✅ Full backup downloaded!');
+}
+function restoreBackup() {
+  const json = document.getElementById('restore-json').value.trim();
+  if (!json) return showAlert('dataAlert','error','⚠️ Paste a valid JSON backup.');
+  try {
+    const data = JSON.parse(json);
+    if (data.users) { DB.users = data.users; localStorage.setItem('sivafood_users', JSON.stringify(DB.users)); }
+    if (data.tickets) { DB.tickets = data.tickets; localStorage.setItem('sivafood_tickets', JSON.stringify(DB.tickets)); }
+    if (data.settings) { DB.settings = data.settings; localStorage.setItem('sivafood_settings', JSON.stringify(DB.settings)); }
+    if (data.adminCreds) { DB.adminCreds = data.adminCreds; localStorage.setItem('sivafood_admin', JSON.stringify(DB.adminCreds)); }
+    refreshSystemInfo(); addLog('Data restored from backup'); showAlert('dataAlert','success','✅ Data restored successfully!');
+  } catch(e) { showAlert('dataAlert','error','❌ Invalid JSON format.'); }
+}
+function clearAllTickets() { if (!confirm('⚠️ Delete ALL tokens?')) return; DB.tickets = []; saveDB(); refreshSystemInfo(); addLog('All tokens cleared'); showAlert('dataAlert','warning','🗑️ All tokens cleared.'); }
+function clearAllUsers() { if (!confirm('⚠️ Delete ALL users?')) return; DB.users = []; saveDB(); refreshSystemInfo(); addLog('All users cleared'); showAlert('dataAlert','warning','🗑️ All users cleared.'); }
+function resetEntireSystem() {
+  const input = prompt('Type RESET to confirm full system reset:');
+  if (input !== 'RESET') return showAlert('dataAlert','error','❌ Reset cancelled.');
+  localStorage.removeItem('sivafood_users'); localStorage.removeItem('sivafood_tickets'); localStorage.removeItem('sivafood_settings'); localStorage.removeItem('sivafood_admin'); localStorage.removeItem('sivafood_current');
+  DB = { users: [], tickets: [], settings: { appName: 'SIVA FOOD' }, adminCreds: { uid: 'ADMIN001', pwd: 'admin@123', mobile: '9999999999' }, devCreds: DB.devCreds };
+  saveDB(); addLog('FULL SYSTEM RESET'); refreshSystemInfo(); showAlert('dataAlert','success','✅ System reset complete.');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const name = DB.settings.appName || 'SIVA FOOD';
+  document.getElementById('appTitleHeader').textContent = name;
+  document.title = name + ' - Developer Portal';
+  addLog('Developer portal initialized');
+});
+</script>
+</body>
+</html>

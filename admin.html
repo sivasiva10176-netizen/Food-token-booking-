@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Siva Food - Admin Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --primary: #2C3E50; --accent: #FF6B35; --success: #27AE60; --warning: #F39C12;
+    --danger: #E74C3C; --info: #3498DB; --light: #F8F9FA; --white: #FFFFFF;
+    --gray: #6C757D; --border: #DEE2E6; --shadow: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #2C3E50 0%, #34495E 50%, #2C3E50 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 10px; }
+  .app-container { width: 100%; max-width: 420px; background: var(--white); border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); overflow: hidden; min-height: 90vh; }
+  .app-header { background: linear-gradient(135deg, #2C3E50, #34495E); color: white; padding: 24px 20px 20px; text-align: center; position: relative; border-bottom: 4px solid var(--accent); }
+  .app-logo { font-size: 36px; margin-bottom: 6px; }
+  .app-title { font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+  .app-subtitle { font-size: 12px; opacity: 0.75; margin-top: 4px; }
+  .header-badge { position: absolute; top: 12px; right: 12px; background: var(--accent); border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
+  .screen { display: none; padding: 24px 20px; animation: fadeIn 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-control { width: 100%; padding: 13px 15px; border: 2px solid var(--border); border-radius: 12px; font-size: 15px; color: var(--primary); background: var(--light); transition: all 0.2s; outline: none; }
+  .form-control:focus { border-color: var(--accent); background: white; box-shadow: 0 0 0 4px rgba(255,107,53,0.1); }
+  .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .btn:active { transform: scale(0.97); }
+  .btn-admin { background: linear-gradient(135deg, #2C3E50, #34495E); color: white; }
+  .btn-accent { background: linear-gradient(135deg, #FF6B35, #e55a26); color: white; margin-top: 10px; }
+  .btn-success { background: linear-gradient(135deg, #27AE60, #219a52); color: white; }
+  .btn-danger { background: linear-gradient(135deg, #E74C3C, #c0392b); color: white; margin-top: 10px; }
+  .btn-info { background: linear-gradient(135deg, #3498DB, #2980b9); color: white; margin-top: 10px; }
+  .btn-warning { background: linear-gradient(135deg, #F39C12, #d68910); color: white; margin-top: 10px; }
+  .btn-sm { padding: 10px; font-size: 14px; border-radius: 10px; margin-top: 0; }
+  .alert { padding: 12px 15px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; font-weight: 500; }
+  .alert-success { background: #d4edda; color: #155724; border-left: 4px solid #27AE60; }
+  .alert-error { background: #f8d7da; color: #721c24; border-left: 4px solid #E74C3C; }
+  .alert-info { background: #cce5ff; color: #004085; border-left: 4px solid #007bff; }
+  .nav-tabs { display: flex; background: var(--light); border-radius: 12px; padding: 4px; margin-bottom: 20px; gap: 4px; overflow-x: auto; }
+  .nav-tab { flex: 1; min-width: 60px; padding: 10px 4px; border: none; border-radius: 10px; background: transparent; font-size: 11px; font-weight: 600; color: var(--gray); cursor: pointer; transition: all 0.2s; text-align: center; white-space: nowrap; }
+  .nav-tab.active { background: white; color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .section-title { font-size: 19px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+  .section-subtitle { font-size: 13px; color: var(--gray); margin-bottom: 16px; }
+  .otp-banner { position: fixed; top: 0; left: 50%; transform: translateX(-50%) translateY(-100%); width: min(420px, 100vw); background: linear-gradient(135deg, #2C3E50, #34495E); color: white; padding: 14px 20px; border-radius: 0 0 20px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); z-index: 9999; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; align-items: center; gap: 12px; }
+  .otp-banner.show { transform: translateX(-50%) translateY(0); }
+  .otp-banner-code { font-size: 22px; font-weight: 900; color: var(--accent); letter-spacing: 4px; margin-top: 2px; }
+  .otp-autofill-btn { background: var(--accent); color: white; border: none; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+  .otp-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .otp-row .form-control { text-align: center; font-size: 20px; font-weight: 700; padding: 12px 6px; }
+  .admin-card { background: linear-gradient(135deg, #2C3E50, #34495E); border-radius: 16px; padding: 16px; color: white; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+  .admin-avatar { width: 52px; height: 52px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .stat-card { background: var(--light); border-radius: 14px; padding: 14px; text-align: center; border: 1.5px solid var(--border); }
+  .stat-icon { font-size: 24px; }
+  .stat-number { font-size: 24px; font-weight: 900; color: var(--primary); margin: 4px 0 2px; }
+  .stat-label { font-size: 11px; color: var(--gray); font-weight: 600; text-transform: uppercase; }
+  .meal-count-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .meal-count-pill { background: var(--light); border: 1.5px solid var(--border); border-radius: 12px; padding: 8px 6px; text-align: center; }
+  .meal-count-pill strong { display: block; font-size: 18px; color: var(--primary); }
+  .meal-count-pill span { font-size: 11px; color: var(--gray); font-weight: 600; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .filter-row .form-control { flex: 1; padding: 10px; font-size: 13px; }
+  .filter-row .btn { width: auto; padding: 10px 14px; font-size: 13px; }
+  .search-box { position: relative; margin-bottom: 14px; }
+  .search-box .form-control { padding-left: 40px; }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; }
+  .booking-item, .user-row { border: 1.5px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; background: white; }
+  .booking-item-header, .user-row-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .booking-name, .user-name-big { font-size: 15px; font-weight: 700; color: var(--primary); }
+  .booking-id, .user-mobile { font-size: 12px; color: var(--gray); margin-top: 2px; }
+  .booking-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .booking-tag { background: var(--light); border-radius: 8px; padding: 3px 8px; font-size: 11px; font-weight: 600; color: var(--primary); }
+  .booking-tag.meal { background: rgba(255,107,53,0.12); color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-success { background: #d4edda; color: #155724; }
+  .badge-warning { background: #fff3cd; color: #856404; }
+  .badge-danger { background: #f8d7da; color: #721c24; }
+  .scan-result { background: #d4edda; border: 2px solid #27AE60; border-radius: 16px; padding: 16px; }
+  .scan-result.invalid { background: #f8d7da; border-color: #E74C3C; }
+  .scan-result-title { font-size: 17px; font-weight: 800; margin-bottom: 10px; }
+  .scan-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .scan-info-item label { font-size: 11px; color: var(--gray); text-transform: uppercase; }
+  .scan-info-item span { display: block; font-size: 14px; font-weight: 700; color: var(--primary); }
+  .qr-link-box { background: var(--light); border: 2px dashed var(--border); border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center; }
+  .empty-state { text-align: center; padding: 34px 20px; color: var(--gray); }
+  .empty-state-icon { font-size: 42px; margin-bottom: 8px; }
+  .bottom-pad { height: 20px; }
+</style>
+</head>
+<body>
+
+<div class="otp-banner" id="otpBanner">
+  <div style="font-size:28px;">📱</div>
+  <div style="flex:1;">
+    <div style="font-size:11px;opacity:0.7;">📩 SMS · Siva Food Admin</div>
+    <div style="font-size:14px;font-weight:600;">Admin verification OTP:</div>
+    <div class="otp-banner-code" id="bannerOtpCode">------</div>
+  </div>
+  <button class="otp-autofill-btn" onclick="autoFillAdminOTP()">⚡ Auto-Fill</button>
+</div>
+
+<div class="app-container">
+  <div class="app-header">
+    <div class="app-logo">🛡️</div>
+    <div class="app-title" id="appTitleHeader">SIVA FOOD</div>
+    <div class="app-subtitle">Admin Control Panel</div>
+    <div class="header-badge">Admin</div>
+  </div>
+
+  <!-- SCREEN: ADMIN LOGIN -->
+  <div class="screen active" id="screen-adminlogin">
+    <br>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:60px;">🔒</div>
+      <div class="section-title" style="text-align:center;">Admin Login</div>
+      <div class="section-subtitle" style="text-align:center;">Authorised personnel only</div>
+    </div>
+    <div id="adminLoginAlert"></div>
+    <div class="form-group">
+      <label class="form-label">Admin User ID</label>
+      <input type="text" class="form-control" id="admin-uid" placeholder="Enter admin user ID">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="admin-pwd" placeholder="Enter password">
+    </div>
+    <button class="btn btn-admin" onclick="adminLoginStep1()">🔐 Continue to OTP</button>
+
+    <div id="admin-otp-section" style="display:none; margin-top:16px;">
+      <div class="form-group">
+        <label class="form-label">OTP sent to registered mobile</label>
+        <div class="otp-row">
+          <input type="tel" class="form-control" maxlength="1" id="aotp1" oninput="otpNext(this,'aotp2')">
+          <input type="tel" class="form-control" maxlength="1" id="aotp2" oninput="otpNext(this,'aotp3')">
+          <input type="tel" class="form-control" maxlength="1" id="aotp3" oninput="otpNext(this,'aotp4')">
+          <input type="tel" class="form-control" maxlength="1" id="aotp4" oninput="otpNext(this,'aotp5')">
+          <input type="tel" class="form-control" maxlength="1" id="aotp5" oninput="otpNext(this,'aotp6')">
+          <input type="tel" class="form-control" maxlength="1" id="aotp6">
+        </div>
+        <button class="btn btn-success" onclick="adminLoginOTP()">✅ Verify & Login</button>
+      </div>
+    </div>
+    <div class="bottom-pad"></div>
+  </div>
+
+  <!-- SCREEN: ADMIN DASHBOARD -->
+  <div class="screen" id="screen-admindash">
+    <div class="admin-card">
+      <div class="admin-avatar">👨‍💼</div>
+      <div>
+        <div style="font-size:16px;font-weight:700;" id="adminDisplayName">Admin</div>
+        <div style="font-size:12px;opacity:0.7;">Administrator</div>
+        <div style="font-size:11px;opacity:0.75;margin-top:3px;" id="adminDisplayId">ID: ---</div>
+      </div>
+    </div>
+
+    <div class="stat-grid" id="statGrid">
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-number" id="statUsers">0</div><div class="stat-label">Total Users</div></div>
+      <div class="stat-card"><div class="stat-icon">🎫</div><div class="stat-number" id="statTickets">0</div><div class="stat-label">Issued Today</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-number" id="statUsed">0</div><div class="stat-label">Used Today</div></div>
+      <div class="stat-card"><div class="stat-icon">⚖️</div><div class="stat-number" id="statBalance">0</div><div class="stat-label">Balance</div></div>
+    </div>
+    <div class="meal-count-bar">
+      <div class="meal-count-pill"><strong id="cntBreakfast">0</strong><span>🥐 Breakfast</span></div>
+      <div class="meal-count-pill"><strong id="cntLunch">0</strong><span>🍱 Lunch</span></div>
+      <div class="meal-count-pill"><strong id="cntDinner">0</strong><span>🍽️ Dinner</span></div>
+    </div>
+    <div style="text-align:center;font-size:12px;color:var(--gray);margin-bottom:14px;">
+      ❌ Cancelled Today: <strong id="statCancelled">0</strong>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="adminTab('scan',this)">📷 Scan</button>
+      <button class="nav-tab" onclick="adminTab('bookings',this)">📋 Bookings</button>
+      <button class="nav-tab" onclick="adminTab('users',this)">👥 Users</button>
+      <button class="nav-tab" onclick="adminTab('qrlink',this)">🔗 QR Link</button>
+      <button class="nav-tab" onclick="adminTab('settings',this)">⚙️ Settings</button>
+    </div>
+
+    <div id="atab-scan">
+      <div class="section-title">📷 QR Code Scan Verify</div>
+      <div class="section-subtitle">Current date tokens only pass</div>
+      <div id="scanAlert"></div>
+      <div class="form-group">
+        <label class="form-label">Token ID / QR Data</label>
+        <input type="text" class="form-control" id="scan-input" placeholder="Enter Token ID (e.g. TKT...)">
+      </div>
+      <button class="btn btn-accent" onclick="scanVerify()">🔍 Verify Token</button>
+      <div id="scanResult" style="margin-top:14px;"></div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="atab-bookings" style="display:none;">
+      <div class="section-title">📋 Daily Booking List</div>
+      <div class="filter-row">
+        <input type="date" class="form-control" id="filter-date">
+        <button class="btn btn-accent btn-sm" onclick="filterBookings()">Filter</button>
+        <button class="btn btn-admin btn-sm" onclick="exportExcel()">📥 Excel</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="form-control" id="bookingSearch" placeholder="Search name or ID..." oninput="filterBookings()">
+      </div>
+      <div id="bookingList"></div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="atab-users" style="display:none;">
+      <div class="section-title">👥 Users & Room Details</div>
+      <div class="section-subtitle">Verify users, view ID/Password & export room list</div>
+      <div class="filter-row">
+        <select class="form-control" id="roomFilter" onchange="renderUsers()">
+          <option value="">All Rooms</option>
+          <option value="1">Room 1</option><option value="2">Room 2</option><option value="3">Room 3</option>
+          <option value="4">Room 4</option><option value="5">Room 5</option><option value="6">Room 6</option>
+          <option value="7">Room 7</option><option value="8">Room 8</option><option value="9">Room 9</option>
+          <option value="10">Room 10</option><option value="11">Room 11</option><option value="12">Room 12</option>
+          <option value="13">Room 13</option><option value="14">Room 14</option><option value="15">Room 15</option>
+          <option value="16">Room 16</option><option value="17">Room 17</option><option value="18">Room 18</option>
+          <option value="Naw hostel">Naw hostel</option>
+          <option value="Outside room">Outside room</option>
+        </select>
+        <button class="btn btn-admin btn-sm" onclick="exportRoomExcel()">📥 Room Excel</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="form-control" id="userSearch" placeholder="Search by name, ID, or mobile..." oninput="renderUsers()">
+      </div>
+      <div id="userList"></div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="atab-qrlink" style="display:none;">
+      <div class="section-title">🔗 QR Code Links</div>
+      <div class="section-subtitle">Generate QR codes for token booking link</div>
+      <div class="form-group">
+        <label class="form-label">Select Token to Display QR</label>
+        <select class="form-control" id="qrTokenSelect" onchange="showQRForToken()">
+          <option value="">-- Select Token ID --</option>
+        </select>
+      </div>
+      <div id="adminQRDisplay" class="qr-link-box">
+        <div style="font-size:40px;">📱</div>
+        <div style="font-size:14px;color:var(--gray);margin-top:8px;">Select a token to display its QR code</div>
+      </div>
+      <button class="btn btn-accent" onclick="generateSystemQR()">🔗 Generate Booking Link QR</button>
+      <div id="systemQRBox" style="margin-top:14px;display:none;" class="qr-link-box">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📲 Scan to open Booking Portal</div>
+        <div id="systemQR"></div>
+        <div style="font-size:11px;color:var(--gray);margin-top:8px;">user.html – Siva Food Booking Portal</div>
+      </div>
+      <div class="bottom-pad"></div>
+    </div>
+
+    <div id="atab-settings" style="display:none;">
+      <div class="section-title">⚙️ Admin Settings</div>
+      <div class="section-subtitle">Configure admin credentials and OTP</div>
+      <div id="settingsAlert"></div>
+      <div style="background:var(--light);border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px;">🔑 Change Admin Credentials</div>
+        <div class="form-group"><label class="form-label">New Admin User ID</label><input type="text" class="form-control" id="new-admin-uid" placeholder="New user ID"></div>
+        <div class="form-group"><label class="form-label">New Password</label><input type="password" class="form-control" id="new-admin-pwd" placeholder="New password"></div>
+        <div class="form-group"><label class="form-label">Admin Mobile Number</label><input type="tel" class="form-control" id="new-admin-mobile" placeholder="10-digit mobile" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+        <button class="btn btn-admin btn-sm" onclick="saveAdminSettings()" style="margin-top:8px;">💾 Save Credentials</button>
+      </div>
+      <div style="background:var(--light);border-radius:14px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:12px;">📩 OTP Engine Test</div>
+        <div class="form-group"><label class="form-label">Test Mobile Number</label><input type="tel" class="form-control" id="test-otp-mobile" placeholder="10-digit mobile" maxlength="10" oninput="this.value=this.value.replace(/\D/g,'')"></div>
+        <button class="btn btn-info btn-sm" onclick="testOTPEngine()" style="margin-top:8px;">📤 Send Test OTP</button>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="adminLogout()" style="margin-top:4px;">🚪 Logout</button>
+      <div class="bottom-pad"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let DB = {
+  users: JSON.parse(localStorage.getItem('sivafood_users') || '[]'),
+  tickets: JSON.parse(localStorage.getItem('sivafood_tickets') || '[]'),
+  settings: JSON.parse(localStorage.getItem('sivafood_settings') || '{"appName":"SIVA FOOD"}'),
+  adminCreds: JSON.parse(localStorage.getItem('sivafood_admin') || '{"uid":"ADMIN001","pwd":"admin@123","mobile":"9999999999"}')
+};
+let _adminOTP = '';
+let _adminLoggedIn = false;
+
+function saveDB() {
+  localStorage.setItem('sivafood_users', JSON.stringify(DB.users));
+  localStorage.setItem('sivafood_tickets', JSON.stringify(DB.tickets));
+  localStorage.setItem('sivafood_settings', JSON.stringify(DB.settings));
+  localStorage.setItem('sivafood_admin', JSON.stringify(DB.adminCreds));
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showAlert(elId, type, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  setTimeout(() => { if(el) el.innerHTML = ''; }, 5000);
+}
+function adminTab(tab, btn) {
+  ['scan','bookings','users','qrlink','settings'].forEach(t => {
+    const el = document.getElementById('atab-'+t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab === 'bookings') { const today = new Date().toISOString().split('T')[0]; document.getElementById('filter-date').value = today; renderBookings(); }
+  if (tab === 'users') renderUsers();
+  if (tab === 'qrlink') populateQRSelect();
+}
+function otpNext(el, nextId) {
+  el.value = el.value.replace(/\D/g,'');
+  if (el.value.length === 1 && nextId) document.getElementById(nextId)?.focus();
+}
+function getOTPValue(prefix) { let val = ''; for(let i=1;i<=6;i++) val += (document.getElementById(prefix+i)?.value||''); return val; }
+function generateOTP() { return String(Math.floor(100000 + Math.random() * 900000)); }
+function showOTPBanner(code) {
+  document.getElementById('bannerOtpCode').textContent = code;
+  const b = document.getElementById('otpBanner');
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 8000);
+}
+function autoFillAdminOTP() {
+  if (!_adminOTP) return;
+  for (let i = 1; i <= 6; i++) {
+    const inp = document.getElementById('aotp' + i);
+    if (inp) inp.value = _adminOTP[i - 1] || '';
+  }
+  document.getElementById('otpBanner').classList.remove('show');
+}
+function adminLoginStep1() {
+  const uid = document.getElementById('admin-uid').value.trim();
+  const pwd = document.getElementById('admin-pwd').value;
+  if (!uid || !pwd) return showAlert('adminLoginAlert','error','⚠️ Enter User ID and Password.');
+  if (uid !== DB.adminCreds.uid || pwd !== DB.adminCreds.pwd) return showAlert('adminLoginAlert','error','❌ Invalid User ID or Password.');
+  _adminOTP = generateOTP();
+  showOTPBanner(_adminOTP);
+  document.getElementById('admin-otp-section').style.display = 'block';
+  showAlert('adminLoginAlert','info','📩 OTP sent to admin mobile. Check the SMS banner.');
+}
+function adminLoginOTP() {
+  const entered = getOTPValue('aotp');
+  if (entered !== _adminOTP) return showAlert('adminLoginAlert','error','❌ Incorrect OTP.');
+  _adminOTP = '';
+  _adminLoggedIn = true;
+  document.getElementById('adminDisplayName').textContent = 'Admin User';
+  document.getElementById('adminDisplayId').textContent = 'ID: ' + DB.adminCreds.uid;
+  loadStats();
+  showScreen('screen-admindash');
+}
+function adminLogout() { _adminLoggedIn = false; showScreen('screen-adminlogin'); }
+
+function loadStats() {
+  DB.users = JSON.parse(localStorage.getItem('sivafood_users') || '[]');
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const today = new Date().toISOString().split('T')[0];
+  const todayIssued = DB.tickets.filter(t => t.date === today && !t.cancelled);
+  const todayUsed = todayIssued.filter(t => t.used);
+  const todayCancelled = DB.tickets.filter(t => t.date === today && t.cancelled);
+  document.getElementById('statUsers').textContent = DB.users.length;
+  document.getElementById('statTickets').textContent = todayIssued.length;
+  document.getElementById('statUsed').textContent = todayUsed.length;
+  document.getElementById('statBalance').textContent = todayIssued.length - todayUsed.length;
+  document.getElementById('statCancelled').textContent = todayCancelled.length;
+  document.getElementById('cntBreakfast').textContent = todayIssued.filter(t => t.meal === 'Breakfast').length;
+  document.getElementById('cntLunch').textContent = todayIssued.filter(t => t.meal === 'Lunch').length;
+  document.getElementById('cntDinner').textContent = todayIssued.filter(t => t.meal === 'Dinner').length;
+}
+
+function scanVerify() {
+  const input = document.getElementById('scan-input').value.trim();
+  if (!input) return showAlert('scanAlert','error','⚠️ Enter a Token ID.');
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  let ticket = DB.tickets.find(t => t.id === input);
+  if (!ticket) { try { const parsed = JSON.parse(input); ticket = DB.tickets.find(t => t.id === parsed.id); } catch(e) {} }
+  const el = document.getElementById('scanResult');
+  if (!ticket) { el.innerHTML = `<div class="scan-result invalid"><div class="scan-result-title">❌ Invalid Token</div><div>Token not found in system.</div></div>`; return; }
+  const today = new Date().toISOString().split('T')[0];
+  if (ticket.date !== today) { el.innerHTML = `<div class="scan-result invalid"><div class="scan-result-title">📅 Wrong Date Token</div><div>Only current date (${today}) tokens can pass. Token date: ${ticket.date}</div></div>`; return; }
+  if (ticket.cancelled) { el.innerHTML = `<div class="scan-result invalid"><div class="scan-result-title">🚫 Cancelled Token</div><div>This token has been cancelled.</div></div>`; return; }
+  if (ticket.used) { el.innerHTML = `<div class="scan-result invalid"><div class="scan-result-title">⚠️ Already Used</div><div>This token was already used.</div></div>`; return; }
+  el.innerHTML = `
+    <div class="scan-result">
+      <div class="scan-result-title">✅ Valid Token (Today)</div>
+      <div class="scan-info">
+        <div class="scan-info-item"><label>Name</label><span>${ticket.username}</span></div>
+        <div class="scan-info-item"><label>User ID</label><span>${ticket.userid}</span></div>
+        <div class="scan-info-item"><label>Department</label><span>${ticket.dept}</span></div>
+        <div class="scan-info-item"><label>Room No</label><span>${ticket.room || 'N/A'}</span></div>
+        <div class="scan-info-item"><label>Shift</label><span>${ticket.shift}</span></div>
+        <div class="scan-info-item"><label>Date</label><span>${ticket.date}</span></div>
+        <div class="scan-info-item"><label>Meal</label><span>${ticket.mealEmoji} ${ticket.meal} ${ticket.mealTime}</span></div>
+      </div>
+      <button class="btn btn-admin btn-sm" style="margin-top:14px;color:white;" onclick="markUsed('${ticket.id}')">✅ Mark as Used</button>
+    </div>`;
+}
+function markUsed(ticketId) {
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const t = DB.tickets.find(x => x.id === ticketId);
+  if (t) { t.used = true; t.usedAt = new Date().toISOString(); saveDB(); }
+  scanVerify(); loadStats();
+  showAlert('scanAlert','success','✅ Token marked as used successfully!');
+}
+
+function renderBookings() {
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const dateFilter = document.getElementById('filter-date').value;
+  const search = (document.getElementById('bookingSearch').value || '').toLowerCase();
+  let list = DB.tickets;
+  if (dateFilter) list = list.filter(t => t.date === dateFilter);
+  if (search) list = list.filter(t => t.username.toLowerCase().includes(search) || t.userid.includes(search) || t.id.toLowerCase().includes(search));
+  list = list.sort((a,b) => new Date(b.bookedAt)-new Date(a.bookedAt));
+  const el = document.getElementById('bookingList');
+  if (!list.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div>No bookings found for this date.</div></div>`; return; }
+  el.innerHTML = list.map(t => `
+    <div class="booking-item">
+      <div class="booking-item-header">
+        <div><div class="booking-name">${t.username}</div><div class="booking-id">ID: ${t.userid} | Room: ${t.room || 'N/A'} | ${t.id}</div></div>
+        <span class="badge ${t.cancelled ? 'badge-danger' : t.used ? 'badge-success' : 'badge-warning'}">${t.cancelled ? 'Cancelled' : t.used ? 'Used' : 'Active'}</span>
+      </div>
+      <div class="booking-meta">
+        <span class="booking-tag">${t.dept}</span>
+        <span class="booking-tag">${t.shift} Shift</span>
+        <span class="booking-tag meal">${t.mealEmoji} ${t.meal} ${t.mealTime}</span>
+        <span class="booking-tag">${t.date}</span>
+      </div>
+      ${!t.cancelled ? `<button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="adminCancelTicket('${t.id}')">❌ Admin Cancel Ticket</button>` : ''}
+    </div>`).join('');
+}
+function adminCancelTicket(ticketId) {
+  if (!confirm('Cancel this ticket as Admin?')) return;
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const t = DB.tickets.find(x => x.id === ticketId);
+  if (t) { t.cancelled = true; t.cancelledBy = 'Admin'; t.cancelledAt = new Date().toISOString(); saveDB(); loadStats(); renderBookings(); }
+}
+function filterBookings() { renderBookings(); }
+
+function exportExcel() {
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const dateFilter = document.getElementById('filter-date').value;
+  let list = DB.tickets;
+  if (dateFilter) list = list.filter(t => t.date === dateFilter);
+  if (!list.length) return alert('No data to export.');
+  const headers = ['Token ID','Name','User ID','Department','Room No','Shift','Date','Meal','Meal Time','Status','Booked At'];
+  const rows = list.map(t => [t.id, t.username, t.userid, t.dept, t.room || 'N/A', t.shift, t.date, t.meal, t.mealTime, t.cancelled ? 'Cancelled' : t.used ? 'Used' : 'Active', new Date(t.bookedAt).toLocaleString()]);
+  let csv = headers.join(',') + '\n';
+  rows.forEach(row => { csv += row.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',') + '\n'; });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'SivaFood_Bookings_' + (dateFilter || 'All') + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function getFilteredUsers() {
+  DB.users = JSON.parse(localStorage.getItem('sivafood_users') || '[]');
+  const search = (document.getElementById('userSearch')?.value || '').toLowerCase();
+  const room = document.getElementById('roomFilter')?.value || '';
+  let list = DB.users;
+  if (room) list = list.filter(u => String(u.room || '') === room);
+  if (search) list = list.filter(u => u.username.toLowerCase().includes(search) || u.userid.includes(search) || u.mobile.includes(search));
+  return list;
+}
+function renderUsers() {
+  const list = getFilteredUsers();
+  const el = document.getElementById('userList');
+  if (!list.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div>No users found.</div></div>`; return; }
+  el.innerHTML = list.map(u => `
+    <div class="user-row">
+      <div class="user-row-header">
+        <div>
+          <div class="user-name-big">👤 ${u.username} <span class="badge ${u.verified ? 'badge-success' : 'badge-warning'}">${u.verified ? '✓ Verified' : 'Pending'}</span></div>
+          <div class="user-mobile">📱 ${u.mobile} &nbsp;|&nbsp; ID: ${u.userid}</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px;">🔑 Pwd: <strong>${u.password || u.dob || 'N/A'}</strong> &nbsp;|&nbsp; 🚪 Room: <strong>${u.room || 'N/A'}</strong></div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px;">🏭 ${u.dept} | ${u.shift} Shift</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <button class="btn ${u.verified ? 'btn-warning' : 'btn-success'} btn-sm" style="width:86px;font-size:11px;" onclick="toggleVerifyUser('${u.userid}')">${u.verified ? 'Unverify' : '✅ Verify'}</button>
+          <button class="btn btn-accent btn-sm" style="width:86px;font-size:11px;" onclick="editUser('${u.userid}')">✏️ Edit</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function toggleVerifyUser(userid) {
+  DB.users = JSON.parse(localStorage.getItem('sivafood_users') || '[]');
+  const u = DB.users.find(x => x.userid === userid);
+  if (!u) return;
+  u.verified = !u.verified;
+  saveDB(); renderUsers();
+}
+function editUser(userid) {
+  DB.users = JSON.parse(localStorage.getItem('sivafood_users') || '[]');
+  const u = DB.users.find(x => x.userid === userid);
+  if (!u) return;
+  const newName = prompt('Edit Username:', u.username);
+  if (newName !== null && newName.trim()) u.username = newName.trim();
+  const newDept = prompt('Edit Department (Store/Mission/Foundry/LPDC/Paint/Whouse/Planning/Manufacturing/EEPD):', u.dept);
+  if (newDept !== null && newDept.trim()) u.dept = newDept.trim();
+  const newRoom = prompt('Edit Room (1-18, Naw hostel, Outside room):', u.room || '');
+  if (newRoom !== null && newRoom.trim()) u.room = newRoom.trim();
+  const newShift = prompt('Edit Shift (General/First/Second/Night):', u.shift);
+  if (newShift !== null && newShift.trim()) u.shift = newShift.trim();
+  saveDB(); renderUsers();
+}
+function exportRoomExcel() {
+  const list = getFilteredUsers();
+  const room = document.getElementById('roomFilter')?.value || 'AllRooms';
+  if (!list.length) return alert('No users in selected room to export.');
+  const headers = ['User ID','Username','Password (DOB)','DOB','Department','Room Number','Shift','Mobile','Verified','Registered At'];
+  const rows = list.map(u => [u.userid, u.username, u.password || u.dob || '', u.dob || '', u.dept, u.room || 'N/A', u.shift, u.mobile, u.verified ? 'Verified' : 'Pending', new Date(u.createdAt).toLocaleString()]);
+  let csv = headers.join(',') + '\n';
+  rows.forEach(row => { csv += row.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',') + '\n'; });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'SivaFood_Room_' + room.replace(/\s+/g,'_') + '_Users.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function populateQRSelect() {
+  DB.tickets = JSON.parse(localStorage.getItem('sivafood_tickets') || '[]');
+  const sel = document.getElementById('qrTokenSelect');
+  sel.innerHTML = '<option value="">-- Select Token ID --</option>';
+  DB.tickets.filter(t => !t.cancelled).forEach(t => { sel.innerHTML += `<option value="${t.id}">${t.id} – ${t.username} (${t.date})</option>`; });
+}
+function showQRForToken() {
+  const id = document.getElementById('qrTokenSelect').value;
+  const el = document.getElementById('adminQRDisplay');
+  if (!id) { el.innerHTML = `<div style="font-size:40px;">📱</div><div style="font-size:14px;color:var(--gray);margin-top:8px;">Select a token to display its QR code</div>`; return; }
+  const ticket = DB.tickets.find(t => t.id === id);
+  if (!ticket) return;
+  el.innerHTML = `<div style="font-size:13px;font-weight:700;margin-bottom:10px;">📲 Token QR – ${ticket.username}</div><div id="tokenQR"></div><div style="font-size:11px;color:var(--gray);margin-top:8px;">${id}</div>`;
+  setTimeout(() => {
+    const qrEl = document.getElementById('tokenQR');
+    if (qrEl) new QRCode(qrEl, { text: JSON.stringify({ id: ticket.id, userid: ticket.userid, name: ticket.username, room: ticket.room, date: ticket.date, shift: ticket.shift, meal: ticket.meal }), width: 160, height: 160, colorDark: '#2C3E50', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+  }, 100);
+}
+function generateSystemQR() {
+  const box = document.getElementById('systemQRBox');
+  box.style.display = 'block';
+  const el = document.getElementById('systemQR');
+  el.innerHTML = '';
+  setTimeout(() => { new QRCode(el, { text: window.location.href.replace('admin.html','user.html'), width: 160, height: 160, colorDark: '#2C3E50', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H }); }, 100);
+}
+function saveAdminSettings() {
+  const uid = document.getElementById('new-admin-uid').value.trim();
+  const pwd = document.getElementById('new-admin-pwd').value;
+  const mobile = document.getElementById('new-admin-mobile').value;
+  if (uid) DB.adminCreds.uid = uid;
+  if (pwd) DB.adminCreds.pwd = pwd;
+  if (mobile.length === 10) DB.adminCreds.mobile = mobile;
+  else if (mobile) return showAlert('settingsAlert','error','⚠️ Mobile must be 10 digits.');
+  saveDB();
+  showAlert('settingsAlert','success','✅ Admin credentials updated successfully!');
+  document.getElementById('adminDisplayId').textContent = 'ID: ' + DB.adminCreds.uid;
+}
+function testOTPEngine() {
+  const mobile = document.getElementById('test-otp-mobile').value;
+  if (mobile.length !== 10) return showAlert('settingsAlert','error','⚠️ Enter a valid 10-digit mobile number.');
+  const otp = generateOTP();
+  showOTPBanner(otp);
+  showAlert('settingsAlert','info','📩 Test OTP sent! OTP: ' + otp + ' — Check the SMS banner above.');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const name = DB.settings.appName || 'SIVA FOOD';
+  document.getElementById('appTitleHeader').textContent = name;
+  document.title = name + ' - Admin Portal';
+  const today = new Date().toISOString().split('T')[0];
+  const df = document.getElementById('filter-date');
+  if (df) df.value = today;
+});
+</script>
+</body>
+</html>
