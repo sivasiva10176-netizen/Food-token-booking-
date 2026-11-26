@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Siva Food — Smart Canteen Token Booking System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- QR Code Generator Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- jsPDF for Ticket PDF Download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- SheetJS (XLSX) for Room List Excel Download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Hide scrollbars cleanly where needed */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Simulated iOS/Android SMS Banner Animation */
+    @keyframes slideDownSMS {
+      0% { transform: translate(-50%, -120%); opacity: 0; }
+      100% { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .sms-banner-enter {
+      animation: slideDownSMS 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Ticket perforated edge effect */
+    .ticket-notch-left, .ticket-notch-right {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      background-color: #f1f5f9;
+      border-radius: 9999px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .ticket-notch-left { left: -11px; }
+    .ticket-notch-right { right: -11px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start bg-slate-200 text-slate-800">
+
+  <!-- SIMULATED MOBILE SMS OTP BANNER (Floating Top Notification) -->
+  <div id="smsOtpBanner" class="hidden fixed top-3 left-1/2 -translate-x-1/2 w-[94%] max-w-md z-50 sms-banner-enter">
+    <div class="bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-slate-700 p-3.5">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <i data-lucide="message-square-code" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">VM-SIVAFOOD • SMS</span>
+              <span class="text-[10px] text-slate-400">Just now</span>
+            </div>
+            <p class="text-xs text-slate-200 mt-0.5 leading-snug">
+              Your <span id="smsAppName" class="font-semibold text-white">Siva Food</span> verification OTP is
+              <span id="smsOtpCodeDisplay" class="font-mono font-bold text-base text-amber-300 tracking-widest bg-slate-800 px-1.5 py-0.5 rounded">000000</span>
+            </p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Sent to <span id="smsTargetMobile" class="font-mono text-slate-300"></span></p>
+          </div>
+        </div>
+        <button onclick="dismissSmsBanner()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between gap-2">
+        <span class="text-[11px] text-slate-400">One-tap auto verification ready</span>
+        <button onclick="autoFillActiveOtp()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition active:scale-95">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          Auto-Fill OTP
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST MESSAGE BOX (Replaces alert/confirm) -->
+  <div id="toastBox" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50 transition-all duration-300">
+    <div id="toastInner" class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700">
+      <div id="toastIcon" class="shrink-0"></div>
+      <p id="toastText" class="text-xs font-medium leading-snug flex-1"></p>
+    </div>
+  </div>
+
+  <!-- CONFIRMATION MODAL (Replaces window.confirm) -->
+  <div id="confirmModal" class="hidden fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100">
+      <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <h3 id="confirmTitle" class="text-base font-bold text-slate-900">Confirm Action</h3>
+      <p id="confirmMessage" class="text-xs text-slate-600 mt-1.5 leading-relaxed"></p>
+      <div class="mt-5 grid grid-cols-2 gap-2.5">
+        <button onclick="closeConfirmModal(false)" class="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50">Cancel</button>
+        <button id="confirmYesBtn" class="py-2.5 px-4 rounded-xl bg-rose-600 text-white font-semibold text-xs hover:bg-rose-700">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE APP SHELL CONTAINER -->
+  <div class="w-full max-w-md min-h-screen bg-slate-100 shadow-2xl flex flex-col relative overflow-x-hidden border-x border-slate-200">
+
+    <!-- TOP APP HEADER & PORTAL SWITCHER -->
+    <header class="bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 text-white px-4 pt-4 pb-3 sticky top-0 z-30 shadow-md">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-xs border border-white/25 flex items-center justify-center shadow-inner">
+            <i data-lucide="utensils-crossed" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h1 id="headerSystemName" class="text-lg font-extrabold tracking-tight leading-none">Siva Food</h1>
+            <p class="text-[11px] text-emerald-100 font-medium mt-0.5 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+              <span id="headerTodayDate"></span>
+            </p>
+          </div>
+        </div>
+        <button onclick="openDownloadFilesModal()" title="Download 3 Separate HTML Files" class="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-[11px] font-semibold flex items-center gap-1.5 transition active:scale-95">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>3 Files</span>
+        </button>
+      </div>
+
+      <!-- 3-PORTAL ROLE SWITCHER PILLS -->
+      <div class="mt-3 bg-emerald-950/35 p-1 rounded-2xl grid grid-cols-3 gap-1 border border-white/10">
+        <button id="portalBtn-user" onclick="switchPortal('user')" class="py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition bg-white text-emerald-800 shadow-sm">
+          <i data-lucide="user" class="w-3.5 h-3.5"></i>
+          <span>User End</span>
+        </button>
+        <button id="portalBtn-admin" onclick="switchPortal('admin')" class="py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition text-emerald-100 hover:bg-white/10">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          <span>Admin End</span>
+        </button>
+        <button id="portalBtn-dev" onclick="switchPortal('dev')" class="py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition text-emerald-100 hover:bg-white/10">
+          <i data-lucide="code-2" class="w-3.5 h-3.5"></i>
+          <span>Developer</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- PORTAL 1: USER END                                                    -->
+    <!-- ===================================================================== -->
+    <main id="portal-user" class="flex-1 p-4 pb-24 space-y-4">
+
+      <!-- USER AUTH SECTION (Shown when no user logged in) -->
+      <div id="userAuthSection" class="space-y-4">
+        <!-- Auth Mode Tabs -->
+        <div class="bg-white p-1.5 rounded-2xl shadow-xs border border-slate-200 grid grid-cols-2 gap-1.5">
+          <button id="userAuthTab-login" onclick="setUserAuthMode('login')" class="py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs transition">
+            Returning Login (OTP / ID)
+          </button>
+          <button id="userAuthTab-register" onclick="setUserAuthMode('register')" class="py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            One-Time Sign Up
+          </button>
+        </div>
+
+        <!-- RETURNING USER LOGIN FORM -->
+        <div id="userLoginCard" class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900">Employee Token Login</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Auto-loads profile & instant token booking</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Quick Access</span>
+          </div>
+
+          <!-- Login Method Toggle -->
+          <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+            <button id="loginMethod-otp" onclick="setUserLoginMethod('otp')" class="py-2 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs">Mobile + OTP</button>
+            <button id="loginMethod-pwd" onclick="setUserLoginMethod('pwd')" class="py-2 rounded-lg text-xs font-bold text-slate-500">User ID + DOB</button>
+          </div>
+
+          <!-- Method A: Mobile Number + Simulated SMS OTP -->
+          <div id="userLoginMethodOtp" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Registered Mobile Number</label>
+              <div class="flex gap-2">
+                <input id="loginMobileInput" type="tel" maxlength="10" placeholder="Enter 10-digit mobile" class="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button onclick="sendUserLoginOtp()" class="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shrink-0 transition active:scale-95">
+                  Send OTP
+                </button>
+              </div>
+            </div>
+
+            <div id="userOtpVerifyBox" class="hidden space-y-3 pt-1">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">6-Digit SMS OTP Code</label>
+                <input id="loginOtpInput" type="text" maxlength="6" placeholder="••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-emerald-400 bg-emerald-50/40 text-center text-lg font-mono font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <button onclick="verifyUserOtpLogin()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition active:scale-98">
+                Verify OTP & Continue
+              </button>
+            </div>
+          </div>
+
+          <!-- Method B: 8-Digit User ID + DOB Password -->
+          <div id="userLoginMethodPwd" class="hidden space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">User ID (8 Digits Only)</label>
+              <input id="loginUserIdInput" type="text" maxlength="8" inputmode="numeric" placeholder="e.g. 10020030" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Password (Default: Date of Birth)</label>
+              <input id="loginUserDobPwdInput" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <button onclick="loginUserWithPassword()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition active:scale-98">
+              Sign In with Password
+            </button>
+          </div>
+
+          <!-- Demo Quick Fill Helper -->
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Demo Verified User: <strong class="font-mono text-slate-700">9876543210</strong> (ID: <strong class="font-mono text-slate-700">12345678</strong>)</span>
+            <button onclick="fillDemoUserLogin()" class="text-emerald-700 font-bold underline">Auto-Fill</button>
+          </div>
+        </div>
+
+        <!-- ONE-TIME SIGN UP FORM -->
+        <div id="userRegisterCard" class="hidden bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 space-y-3.5">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">One-Time Employee Sign Up</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Requires Admin verification before booking tokens</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">User ID (8 Digits) *</label>
+              <input id="regUserId" type="text" maxlength="8" inputmode="numeric" placeholder="8-digit ID" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Mobile Number *</label>
+              <input id="regMobile" type="tel" maxlength="10" inputmode="numeric" placeholder="10-digit mobile" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-bold text-slate-700 mb-1">Username (Full Name) *</label>
+            <input id="regUsername" type="text" placeholder="Enter employee full name" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Date of Birth *</label>
+              <input id="regDob" type="date" onchange="syncRegDobPassword()" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Default Password</label>
+              <input id="regPasswordPreview" type="text" readonly placeholder="Auto = DOB" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-xs font-mono" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Department *</label>
+              <select id="regDepartment" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="">Select Dept</option>
+                <option value="Store">Store</option>
+                <option value="Mission">Mission</option>
+                <option value="Foundry">Foundry</option>
+                <option value="Lpdc">Lpdc</option>
+                <option value="Paint">Paint</option>
+                <option value="Whouse">Whouse</option>
+                <option value="Planning">Planning</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="EEPD">EEPD</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Room Number *</label>
+              <select id="regRoom" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="">Select Room</option>
+                <option value="1">Room 1</option>
+                <option value="2">Room 2</option>
+                <option value="3">Room 3</option>
+                <option value="4">Room 4</option>
+                <option value="5">Room 5</option>
+                <option value="6">Room 6</option>
+                <option value="7">Room 7</option>
+                <option value="8">Room 8</option>
+                <option value="9">Room 9</option>
+                <option value="10">Room 10</option>
+                <option value="11">Room 11</option>
+                <option value="12">Room 12</option>
+                <option value="13">Room 13</option>
+                <option value="14">Room 14</option>
+                <option value="15">Room 15</option>
+                <option value="16">Room 16</option>
+                <option value="17">Room 17</option>
+                <option value="18">Room 18</option>
+                <option value="New hostel">New hostel</option>
+                <option value="Outside room">Outside room</option>
+              </select>
+            </div>
+          </div>
+
+          <button onclick="registerNewUser()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition active:scale-98 mt-1">
+            Complete One-Time Registration
+          </button>
+        </div>
+      </div>
+
+      <!-- USER DASHBOARD SECTION (Shown after User Login) -->
+      <div id="userDashboardSection" class="hidden space-y-4">
+
+        <!-- Employee Profile Card -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/80">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 font-extrabold text-base flex items-center justify-center">
+                <span id="userAvatarInitial">U</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 id="dashUserName" class="text-sm font-extrabold text-slate-900">Employee Name</h3>
+                  <span id="dashUserVerifyBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold"></span>
+                </div>
+                <p class="text-[11px] text-slate-500 font-mono mt-0.5">
+                  ID: <span id="dashUserId" class="font-bold text-slate-700"></span> • <span id="dashUserMobile"></span>
+                </p>
+              </div>
+            </div>
+            <button onclick="logoutUser()" class="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 transition" title="Logout">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center">
+            <div class="bg-slate-50 rounded-xl p-2">
+              <span class="block text-[10px] text-slate-400 uppercase font-bold">Department</span>
+              <span id="dashUserDept" class="text-xs font-bold text-slate-800">-</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2">
+              <span class="block text-[10px] text-slate-400 uppercase font-bold">Room No</span>
+              <span id="dashUserRoom" class="text-xs font-bold text-slate-800">-</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2">
+              <span class="block text-[10px] text-slate-400 uppercase font-bold">DOB / Pass</span>
+              <span id="dashUserDob" class="text-xs font-mono font-bold text-slate-800">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- UNVERIFIED USER WARNING BANNER (Enforces: user verified admin only) -->
+        <div id="userPendingVerificationCard" class="hidden bg-amber-50 border border-amber-200 rounded-3xl p-5 text-center space-y-2.5">
+          <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-sm font-extrabold text-amber-900">Admin Verification Pending</h3>
+          <p class="text-xs text-amber-800 leading-relaxed">
+            Your account is registered, but food token booking is locked until an <strong>Admin verifies your profile</strong>. Please contact the canteen admin or switch to <strong>Admin End</strong> to approve your User ID.
+          </p>
+        </div>
+
+        <!-- SHIFT TOKEN BOOKING CARD (Hidden automatically once booked today!) -->
+        <div id="userBookingFormCard" class="hidden bg-white rounded-3xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-extrabold text-slate-900">Book Today's Food Token</h3>
+              <p class="text-xs text-slate-500">1 User • 1 Day • 1 Token Only</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Verified User</span>
+          </div>
+
+          <!-- Shift Selection -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Select Your Shift Entry *</label>
+            <select id="bookingShiftSelect" onchange="handleShiftChange()" class="w-full px-3.5 py-3 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="General Shift (9 to 5)">General Shift (9:00 AM to 5:00 PM)</option>
+              <option value="First Shift (6 to 2)">First Shift (6:00 AM to 2:00 PM)</option>
+              <option value="Second Shift (2 to 10)">Second Shift (2:00 PM to 10:00 PM)</option>
+              <option value="Night Shift (10 to 6)">Night Shift (10:00 PM to 6:00 AM)</option>
+              <option value="Comp Off (Computer Off)">Computer Off (Comp Off)</option>
+            </select>
+          </div>
+
+          <!-- Comp Off Meal Selector (Visible ONLY when Computer Off is selected) -->
+          <div id="compOffMealBox" class="hidden bg-indigo-50/70 border border-indigo-200 rounded-2xl p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-indigo-900">Computer Off — Select Meal</span>
+              <span class="text-[10px] font-semibold text-indigo-600">Default Pre-selected</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="cursor-pointer">
+                <input type="radio" name="compOffMeal" value="Breakfast" onchange="updateMealPreview()" class="peer sr-only" />
+                <div class="py-2.5 px-2 rounded-xl border border-indigo-200 bg-white peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 text-center text-xs font-bold transition">
+                  Breakfast
+                </div>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="compOffMeal" value="Lunch" checked onchange="updateMealPreview()" class="peer sr-only" />
+                <div class="py-2.5 px-2 rounded-xl border border-indigo-200 bg-white peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 text-center text-xs font-bold transition">
+                  Lunch
+                </div>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="compOffMeal" value="Dinner" onchange="updateMealPreview()" class="peer sr-only" />
+                <div class="py-2.5 px-2 rounded-xl border border-indigo-200 bg-white peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 text-center text-xs font-bold transition">
+                  Dinner
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Auto-Assigned Meal & Serving Time Summary -->
+          <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between">
+            <div>
+              <span class="block text-[10px] uppercase font-bold text-emerald-700">Assigned Meal Token</span>
+              <span id="previewMealType" class="text-base font-extrabold text-emerald-950">Dinner</span>
+            </div>
+            <div class="text-right">
+              <span class="block text-[10px] uppercase font-bold text-emerald-700">Serving Time</span>
+              <span id="previewServingTime" class="text-sm font-mono font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 inline-block mt-0.5">7:30 PM</span>
+            </div>
+          </div>
+
+          <button onclick="confirmAndBookToken()" class="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition active:scale-98">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            <span>Confirm & Complete Booking</span>
+          </button>
+        </div>
+
+        <!-- DIGITAL FOOD TOKEN TICKET CARD (Shown after booking completes) -->
+        <div id="userActiveTicketCard" class="hidden space-y-3">
+          <div class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden relative">
+            <!-- Ticket Header -->
+            <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 flex items-center justify-between">
+              <div>
+                <span id="ticketBrandHeader" class="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Siva Food</span>
+                <h4 class="text-base font-extrabold mt-0.5">DIGITAL FOOD TOKEN</h4>
+              </div>
+              <span id="ticketStatusPill" class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                ACTIVE
+              </span>
+            </div>
+
+            <!-- Ticket Body -->
+            <div class="p-5 space-y-4 relative">
+              <div class="flex items-center justify-between border-b border-dashed border-slate-200 pb-3">
+                <div>
+                  <span class="text-[10px] font-bold uppercase text-slate-400">Meal & Serving Time</span>
+                  <div class="text-lg font-extrabold text-slate-900">
+                    <span id="tktMeal">Dinner</span> • <span id="tktServingTime" class="text-emerald-600">7:30 PM</span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] font-bold uppercase text-slate-400">Token ID</span>
+                  <div id="tktId" class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">TKN-0000</div>
+                </div>
+              </div>
+
+              <!-- User & Shift Details Grid -->
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">User ID (8-Digit)</span>
+                  <span id="tktUserId" class="font-mono font-bold text-slate-800">12345678</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Username</span>
+                  <span id="tktUsername" class="font-bold text-slate-800">Employee Name</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Department & Room</span>
+                  <span id="tktDeptRoom" class="font-semibold text-slate-700">Foundry • Room 4</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Shift Entry</span>
+                  <span id="tktShift" class="font-semibold text-slate-700">General Shift</span>
+                </div>
+                <div class="col-span-2">
+                  <span class="text-[10px] text-slate-400 font-bold uppercase block">Booking Date & Timestamp</span>
+                  <span id="tktBookedAt" class="font-mono text-[11px] font-semibold text-slate-700">2026-11-26 11:07:00</span>
+                </div>
+              </div>
+
+              <!-- Perforated Divider -->
+              <div class="relative py-2">
+                <div class="border-t-2 border-dashed border-slate-200"></div>
+                <div class="ticket-notch-left border-r border-slate-200"></div>
+                <div class="ticket-notch-right border-l border-slate-200"></div>
+              </div>
+
+              <!-- Scannable QR Code -->
+              <div class="flex flex-col items-center justify-center pt-1">
+                <div id="ticketQrContainer" class="p-3 bg-white rounded-2xl border-2 border-slate-100 shadow-inner"></div>
+                <p class="text-[10px] text-slate-400 font-medium mt-2">Scan at Canteen Counter • Valid Current Date Only</p>
+              </div>
+
+              <!-- Ticket Actions: PDF Download & 1-Hour User Cancellation -->
+              <div class="pt-2 space-y-2.5">
+                <button onclick="downloadTicketPdf()" class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition active:scale-98">
+                  <i data-lucide="file-down" class="w-4 h-4 text-emerald-400"></i>
+                  <span>Download Token Ticket (PDF)</span>
+                </button>
+
+                <div id="userCancelSection" class="bg-rose-50/70 border border-rose-200 rounded-2xl p-3 flex items-center justify-between gap-2">
+                  <div>
+                    <span class="block text-[11px] font-bold text-rose-900">1-Hour Cancellation Window</span>
+                    <span id="cancelCountdownText" class="text-[10px] font-mono font-semibold text-rose-700">Remaining: 59m 59s</span>
+                  </div>
+                  <button id="userCancelTicketBtn" onclick="userCancelOwnTicket()" class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:text-slate-500 text-white text-xs font-bold transition">
+                    Cancel Ticket
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-center text-[11px] text-slate-500">Ticket is locked after booking. No edits permitted.</p>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- PORTAL 2: ADMIN END                                                   -->
+    <!-- ===================================================================== -->
+    <main id="portal-admin" class="hidden flex-1 p-4 pb-24 space-y-4">
+
+      <!-- ADMIN LOGIN CARD -->
+      <div id="adminAuthCard" class="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-slate-900 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="shield-alert" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900">Admin Portal Login</h2>
+            <p class="text-xs text-slate-500">Credentials + Mandatory Mobile OTP</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Admin User ID</label>
+            <input id="adminLoginId" type="text" placeholder="Enter Admin User ID" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Admin Password</label>
+            <input id="adminLoginPwd" type="password" placeholder="Enter Admin Password" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+
+          <button onclick="initiateAdminOtp()" class="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition">
+            <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
+            <span>Verify Credentials & Send Mobile OTP</span>
+          </button>
+
+          <div id="adminOtpBox" class="hidden pt-2 border-t border-slate-100 space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Enter 6-Digit Admin SMS OTP</label>
+              <input id="adminOtpInput" type="text" maxlength="6" placeholder="••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-emerald-400 bg-emerald-50/40 text-center text-lg font-mono font-bold tracking-[0.4em]" />
+            </div>
+            <button onclick="completeAdminLogin()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md">
+              Unlock Admin Dashboard
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+          <span>Default Admin: <strong class="font-mono text-slate-700">admin</strong> / <strong class="font-mono text-slate-700">admin123</strong></span>
+          <button onclick="fillDemoAdminLogin()" class="text-emerald-700 font-bold underline">Auto-Fill</button>
+        </div>
+      </div>
+
+      <!-- ADMIN DASHBOARD CONTENT -->
+      <div id="adminDashboardContent" class="hidden space-y-4">
+
+        <!-- Admin Top Bar -->
+        <div class="bg-slate-900 text-white rounded-3xl p-4 flex items-center justify-between shadow-md">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Admin Console Active</span>
+            <h2 class="text-sm font-extrabold mt-0.5">Canteen Operations & Verification</h2>
+          </div>
+          <button onclick="logoutAdmin()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/80 text-xs font-bold transition">
+            Logout
+          </button>
+        </div>
+
+        <!-- LIVE MEAL & BALANCE ACCOUNT COUNTERS -->
+        <div class="grid grid-cols-3 gap-2.5">
+          <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs text-center">
+            <span class="text-[10px] font-bold uppercase text-amber-600 block">Breakfast</span>
+            <span id="statBreakfast" class="text-xl font-extrabold text-slate-900 font-mono">0</span>
+          </div>
+          <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs text-center">
+            <span class="text-[10px] font-bold uppercase text-emerald-600 block">Lunch</span>
+            <span id="statLunch" class="text-xl font-extrabold text-slate-900 font-mono">0</span>
+          </div>
+          <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs text-center">
+            <span class="text-[10px] font-bold uppercase text-indigo-600 block">Dinner</span>
+            <span id="statDinner" class="text-xl font-extrabold text-slate-900 font-mono">0</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-emerald-100 block">Tokens Issued Today</span>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="statIssuedCount" class="text-2xl font-extrabold font-mono">0</span>
+              <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full">Quota: <span id="statDailyQuota">500</span></span>
+            </div>
+          </div>
+          <div class="bg-slate-800 text-white p-3.5 rounded-2xl shadow-sm">
+            <span class="text-[10px] font-bold uppercase text-slate-300 block">Balance Account</span>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="statBalanceCount" class="text-2xl font-extrabold font-mono text-amber-300">500</span>
+              <span class="text-[10px] text-slate-400">Remaining</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN SUB-NAVIGATION TABS -->
+        <div class="bg-white p-1.5 rounded-2xl border border-slate-200 grid grid-cols-3 gap-1">
+          <button id="adminTab-scanner" onclick="switchAdminTab('scanner')" class="py-2 rounded-xl text-xs font-bold bg-slate-900 text-white">QR Verify</button>
+          <button id="adminTab-users" onclick="switchAdminTab('users')" class="py-2 rounded-xl text-xs font-bold text-slate-600">Users & Auth</button>
+          <button id="adminTab-rooms" onclick="switchAdminTab('rooms')" class="py-2 rounded-xl text-xs font-bold text-slate-600">Rooms & Excel</button>
+        </div>
+
+        <!-- ADMIN TAB 1: QR SCANNER & CURRENT-DATE VERIFICATION + BOOKING LINK QR -->
+        <div id="adminView-scanner" class="space-y-4">
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Token QR Scanner</h3>
+                <p class="text-[11px] text-slate-500">Passes <strong>Current Date</strong> active tokens only</p>
+              </div>
+              <button id="toggleCameraBtn" onclick="toggleAdminQrCamera()" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5">
+                <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                <span>Start Camera</span>
+              </button>
+            </div>
+
+            <!-- Camera Preview Box -->
+            <div id="adminQrReader" class="w-full rounded-2xl overflow-hidden bg-slate-900 hidden"></div>
+
+            <!-- Manual / Simulated Scan Input -->
+            <div class="pt-1">
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Or Enter / Paste Token ID to Verify</label>
+              <div class="flex gap-2">
+                <input id="manualVerifyTokenInput" type="text" placeholder="e.g. TKN-849201" class="flex-1 px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-mono uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                <button onclick="verifyScannedToken(document.getElementById('manualVerifyTokenInput').value)" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">
+                  Verify
+                </button>
+              </div>
+            </div>
+
+            <!-- Verification Result Banner -->
+            <div id="scanVerificationResult" class="hidden rounded-2xl p-3.5 border text-xs"></div>
+          </div>
+
+          <!-- Active Today's Tickets List with Admin Authorized Cancellation -->
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-slate-900">All Booked Tokens</h3>
+              <span class="text-[10px] font-bold text-slate-500">Admin Cancel Anytime</span>
+            </div>
+            <div id="adminTicketsList" class="space-y-2.5 max-h-72 overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Shareable Booking Portal QR & Link -->
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs flex items-center gap-4">
+            <div id="portalShareQr" class="p-2 bg-slate-50 rounded-xl border border-slate-200 shrink-0"></div>
+            <div class="space-y-1.5 flex-1 min-w-0">
+              <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">User Booking QR</span>
+              <h4 class="text-xs font-extrabold text-slate-900">Scan to Open User Token Portal</h4>
+              <p id="portalShareUrlText" class="text-[10px] font-mono text-slate-500 truncate"></p>
+              <button onclick="copyPortalLink()" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold inline-flex items-center gap-1.5">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+                <span>Copy Booking Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 2: USER VERIFICATION & CREDENTIALS VIEW -->
+        <div id="adminView-users" class="hidden space-y-3">
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">Registered Users & Passwords</h3>
+              <p class="text-[11px] text-slate-500">Approve pending employees so they can book food tokens</p>
+            </div>
+            <div id="adminUsersList" class="space-y-2.5 max-h-[28rem] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN TAB 3: ROOM-WISE FILTER & EXCEL DOWNLOAD -->
+        <div id="adminView-rooms" class="hidden space-y-3">
+          <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-extrabold text-slate-900">Room-Wise User & Token List</h3>
+                <p class="text-[11px] text-slate-500">Filter by room & export Excel report</p>
+              </div>
+              <button onclick="downloadRoomExcel()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>Excel (.xlsx)</span>
+              </button>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Filter by Room Number</label>
+              <select id="adminRoomFilterSelect" onchange="renderAdminRoomList()" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white">
+                <option value="ALL">All Rooms (Complete List)</option>
+                <option value="1">Room 1</option>
+                <option value="2">Room 2</option>
+                <option value="3">Room 3</option>
+                <option value="4">Room 4</option>
+                <option value="5">Room 5</option>
+                <option value="6">Room 6</option>
+                <option value="7">Room 7</option>
+                <option value="8">Room 8</option>
+                <option value="9">Room 9</option>
+                <option value="10">Room 10</option>
+                <option value="11">Room 11</option>
+                <option value="12">Room 12</option>
+                <option value="13">Room 13</option>
+                <option value="14">Room 14</option>
+                <option value="15">Room 15</option>
+                <option value="16">Room 16</option>
+                <option value="17">Room 17</option>
+                <option value="18">Room 18</option>
+                <option value="New hostel">New hostel</option>
+                <option value="Outside room">Outside room</option>
+              </select>
+            </div>
+
+            <div id="adminRoomDetailList" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- PORTAL 3: DEVELOPER END                                               -->
+    <!-- ===================================================================== -->
+    <main id="portal-dev" class="hidden flex-1 p-4 pb-24 space-y-4">
+
+      <!-- DEVELOPER LOGIN CARD -->
+      <div id="devAuthCard" class="bg-slate-900 text-white rounded-3xl p-5 shadow-xl border border-slate-800 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="terminal" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-extrabold">Developer Master Control</h2>
+            <p class="text-xs text-slate-400">Authorized Developer Credentials Required</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Developer User ID</label>
+            <input id="devLoginId" type="text" placeholder="Enter Developer ID" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">Developer Password</label>
+            <input id="devLoginPwd" type="password" placeholder="Enter Developer Password" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <button onclick="loginDeveloper()" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm transition">
+            Authenticate Developer
+          </button>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+          <span>ID: <strong class="font-mono text-emerald-400">siva@521</strong></span>
+          <button onclick="fillDemoDevLogin()" class="text-emerald-400 font-bold underline">Auto-Fill Credentials</button>
+        </div>
+      </div>
+
+      <!-- DEVELOPER SETTINGS PANEL -->
+      <div id="devDashboardContent" class="hidden space-y-4">
+        <div class="bg-slate-900 text-white rounded-3xl p-4 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold uppercase text-emerald-400">Root Developer Access</span>
+            <h2 class="text-sm font-extrabold">System & Admin Configuration</h2>
+          </div>
+          <button onclick="logoutDeveloper()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-rose-500/80 text-xs font-bold">
+            Lock
+          </button>
+        </div>
+
+        <!-- 1. Food Token Booking System Name Config -->
+        <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+          <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <i data-lucide="type" class="w-4 h-4 text-emerald-600"></i>
+            <span>System Name & Daily Quota</span>
+          </h3>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Food Token Booking System Name</label>
+            <input id="devSystemNameInput" type="text" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Daily Token Account Quota</label>
+            <input id="devDailyQuotaInput" type="number" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <button onclick="saveDevBranding()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs">
+            Update System Name & Quota
+          </button>
+        </div>
+
+        <!-- 2. Admin User ID, Password & Registered Mobile Config -->
+        <div class="bg-white rounded-3xl p-4 border border-slate-200 shadow-xs space-y-3">
+          <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <i data-lucide="key-round" class="w-4 h-4 text-indigo-600"></i>
+            <span>Admin Credentials & OTP Mobile</span>
+          </h3>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Admin User ID</label>
+            <input id="devAdminIdInput" type="text" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Admin Password</label>
+            <input id="devAdminPwdInput" type="text" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Admin Registered Mobile (Receives Login OTP)</label>
+            <input id="devAdminMobileInput" type="tel" maxlength="10" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono" />
+          </div>
+          <button onclick="saveDevAdminConfig()" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs">
+            Save Admin Entry Settings
+          </button>
+        </div>
+
+        <!-- 3. Download 3 Separate Standalone HTML Files -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 space-y-3">
+          <div>
+            <h3 class="text-sm font-extrabold text-emerald-950">Export 3 Separate Portal Files</h3>
+            <p class="text-[11px] text-emerald-800 mt-0.5">Download standalone HTML files for User End, Admin End, and Developer End</p>
+          </div>
+          <div class="grid grid-cols-1 gap-2">
+            <button onclick="downloadStandalonePortal('user')" class="py-2.5 px-3.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-between">
+              <span>1. Download User End (user-end.html)</span>
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+            <button onclick="downloadStandalonePortal('admin')" class="py-2.5 px-3.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-between">
+              <span>2. Download Admin End (admin-end.html)</span>
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+            <button onclick="downloadStandalonePortal('dev')" class="py-2.5 px-3.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 font-bold text-xs flex items-center justify-between">
+              <span>3. Download Developer End (developer-end.html)</span>
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Reset Demo Database -->
+        <div class="bg-white rounded-3xl p-4 border border-rose-200 space-y-2.5">
+          <h3 class="text-xs font-extrabold text-rose-700 uppercase">System Maintenance</h3>
+          <button onclick="resetSystemToDefaults()" class="w-full py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs">
+            Reset All Data & Restore Default Seed
+          </button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- MODAL FOR QUICK DOWNLOAD OF 3 SEPARATE FILES -->
+    <div id="filesModal" class="hidden fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-extrabold text-slate-900">Download 3 Separate Files</h3>
+          <button onclick="closeDownloadFilesModal()" class="p-1.5 rounded-xl bg-slate-100 text-slate-500">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Export individual standalone HTML files pre-configured to boot directly into each respective portal while sharing synchronized browser storage:
+        </p>
+        <div class="space-y-2">
+          <button onclick="downloadStandalonePortal('user')" class="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-between">
+            <span>user-end.html (User Portal)</span>
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+          <button onclick="downloadStandalonePortal('admin')" class="w-full py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
+            <span>admin-end.html (Admin Portal)</span>
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+          <button onclick="downloadStandalonePortal('dev')" class="w-full py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-between">
+            <span>developer-end.html (Developer Portal)</span>
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    // =========================================================================
+    // 1. STORAGE KEYS & DEFAULT SEED DATA
+    // =========================================================================
+    const STORAGE_KEYS = {
+      CONFIG: 'sivafood_config_v1',
+      USERS: 'sivafood_users_v1',
+      TICKETS: 'sivafood_tickets_v1',
+      SESSION_USER: 'sivafood_session_user_v1',
+      SESSION_ADMIN: 'sivafood_session_admin_v1',
+      SESSION_DEV: 'sivafood_session_dev_v1'
+    };
+
+    const DEV_MASTER_CREDENTIALS = {
+      userId: 'siva@521',
+      password: 'Siv@521'
+    };
+
+    function getTodayDateString() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function formatDateTime(ts) {
+      const dt = new Date(ts);
+      return dt.toLocaleString('en-IN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+      });
+    }
+
+    function initDefaultStorage() {
+      if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
+        const defaultConfig = {
+          systemName: 'Siva Food',
+          adminUserId: 'admin',
+          adminPassword: 'admin123',
+          adminMobile: '9999988888',
+          dailyQuota: 500
+        };
+        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(defaultConfig));
+      }
+
+      if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
+        const seedUsers = [
+          {
+            userId: '12345678',
+            username: 'Arun Kumar',
+            mobile: '9876543210',
+            dob: '1996-05-15',
+            password: '1996-05-15',
+            department: 'Foundry',
+            room: '4',
+            verified: true,
+            createdAt: Date.now() - 86400000
+          },
+          {
+            userId: '87654321',
+            username: 'Karthik Raja',
+            mobile: '9123456780',
+            dob: '1998-08-22',
+            password: '1998-08-22',
+            department: 'Manufacturing',
+            room: 'New hostel',
+            verified: false,
+            createdAt: Date.now() - 3600000
+          }
+        ];
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(seedUsers));
+      }
+
+      if (!localStorage.getItem(STORAGE_KEYS.TICKETS)) {
+        localStorage.setItem(STORAGE_KEYS.TICKETS, JSON.stringify([]));
+      }
+    }
+
+    function getConfig() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG));
+    }
+    function saveConfig(cfg) {
+      localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(cfg));
+      applySystemBranding();
+    }
+    function getUsers() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS)) || [];
+    }
+    function saveUsers(users) {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    }
+    function getTickets() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEYS.TICKETS)) || [];
+    }
+    function saveTickets(tickets) {
+      localStorage.setItem(STORAGE_KEYS.TICKETS, JSON.stringify(tickets));
+    }
+
+    // =========================================================================
+    // 2. UI HELPERS: TOAST, CONFIRM MODAL & SIMULATED MOBILE SMS OTP ENGINE
+    // =========================================================================
+    let activeOtpState = {
+      code: null,
+      targetInputId: null,
+      mobile: null
+    };
+
+    function showToast(message, type = 'info') {
+      const box = document.getElementById('toastBox');
+      const inner = document.getElementById('toastInner');
+      const icon = document.getElementById('toastIcon');
+      const text = document.getElementById('toastText');
+
+      text.textContent = message;
+      inner.className = 'px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border ';
+      if (type === 'success') {
+        inner.className += 'bg-emerald-950 text-white border-emerald-700';
+        icon.innerHTML = '<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>';
+      } else if (type === 'error') {
+        inner.className += 'bg-rose-950 text-white border-rose-700';
+        icon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-400"></i>';
+      } else {
+        inner.className += 'bg-slate-900 text-white border-slate-700';
+        icon.innerHTML = '<i data-lucide="info" class="w-5 h-5 text-sky-400"></i>';
+      }
+      box.classList.remove('hidden');
+      lucide.createIcons();
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => box.classList.add('hidden'), 3400);
+    }
+
+    let confirmCallback = null;
+    function openConfirmModal(title, message, onConfirm) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('confirmModal').classList.remove('hidden');
+      document.getElementById('confirmYesBtn').onclick = () => closeConfirmModal(true);
+    }
+    function closeConfirmModal(confirmed) {
+      document.getElementById('confirmModal').classList.add('hidden');
+      if (confirmed && typeof confirmCallback === 'function') {
+        confirmCallback();
+      }
+      confirmCallback = null;
+    }
+
+    // Simulated Real Mobile OTP Engine
+    function triggerSimulatedSmsOtp(mobileNumber, targetInputId) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      activeOtpState = { code, targetInputId, mobile: mobileNumber };
+
+      const cfg = getConfig();
+      document.getElementById('smsAppName').textContent = cfg.systemName;
+      document.getElementById('smsOtpCodeDisplay').textContent = code;
+      document.getElementById('smsTargetMobile').textContent = `+91 ${mobileNumber}`;
+
+      const banner = document.getElementById('smsOtpBanner');
+      banner.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function autoFillActiveOtp() {
+      if (activeOtpState.code && activeOtpState.targetInputId) {
+        const input = document.getElementById(activeOtpState.targetInputId);
+        if (input) {
+          input.value = activeOtpState.code;
+          input.focus();
+          showToast('6-digit OTP auto-filled from SMS!', 'success');
+        }
+      }
+    }
+
+    function dismissSmsBanner() {
+      document.getElementById('smsOtpBanner').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // 3. PORTAL NAVIGATION & BRANDING SYNC
+    // =========================================================================
+    let currentPortal = 'user';
+    let qrCameraInstance = null;
+
+    function applySystemBranding() {
+      const cfg = getConfig();
+      document.title = `${cfg.systemName} — Food Token Booking System`;
+      document.getElementById('headerSystemName').textContent = cfg.systemName;
+      document.getElementById('ticketBrandHeader').textContent = cfg.systemName;
+      document.getElementById('headerTodayDate').textContent = new Date().toLocaleDateString('en-IN', {
+        weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+      });
+    }
+
+    function switchPortal(portal) {
+      currentPortal = portal;
+      ['user', 'admin', 'dev'].forEach(p => {
+        const view = document.getElementById(`portal-${p}`);
+        const btn = document.getElementById(`portalBtn-${p}`);
+        if (p === portal) {
+          view.classList.remove('hidden');
+          btn.className = 'py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition bg-white text-emerald-800 shadow-sm';
+        } else {
+          view.classList.add('hidden');
+          btn.className = 'py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition text-emerald-100 hover:bg-white/10';
+        }
+      });
+
+      if (portal !== 'admin' && qrCameraInstance) {
+        stopAdminQrCamera();
+      }
+
+      if (portal === 'user') refreshUserPortal();
+      if (portal === 'admin') refreshAdminPortal();
+      if (portal === 'dev') refreshDevPortal();
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // 4. USER END LOGIC (REGISTRATION, OTP/PWD LOGIN, SHIFT BOOKING, TICKET)
+    // =========================================================================
+    function setUserAuthMode(mode) {
+      const loginCard = document.getElementById('userLoginCard');
+      const regCard = document.getElementById('userRegisterCard');
+      const tabLogin = document.getElementById('userAuthTab-login');
+      const tabReg = document.getElementById('userAuthTab-register');
+
+      if (mode === 'login') {
+        loginCard.classList.remove('hidden');
+        regCard.classList.add('hidden');
+        tabLogin.className = 'py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs transition';
+        tabReg.className = 'py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition';
+      } else {
+        loginCard.classList.add('hidden');
+        regCard.classList.remove('hidden');
+        tabReg.className = 'py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-xs transition';
+        tabLogin.className = 'py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition';
+      }
+    }
+
+    function setUserLoginMethod(method) {
+      const otpBox = document.getElementById('userLoginMethodOtp');
+      const pwdBox = document.getElementById('userLoginMethodPwd');
+      const btnOtp = document.getElementById('loginMethod-otp');
+      const btnPwd = document.getElementById('loginMethod-pwd');
+
+      if (method === 'otp') {
+        otpBox.classList.remove('hidden');
+        pwdBox.classList.add('hidden');
+        btnOtp.className = 'py-2 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs';
+        btnPwd.className = 'py-2 rounded-lg text-xs font-bold text-slate-500';
+      } else {
+        otpBox.classList.add('hidden');
+        pwdBox.classList.remove('hidden');
+        btnPwd.className = 'py-2 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs';
+        btnOtp.className = 'py-2 rounded-lg text-xs font-bold text-slate-500';
+      }
+    }
+
+    function syncRegDobPassword() {
+      const dob = document.getElementById('regDob').value;
+      document.getElementById('regPasswordPreview').value = dob || '';
+    }
+
+    function registerNewUser() {
+      const userId = document.getElementById('regUserId').value.trim();
+      const mobile = document.getElementById('regMobile').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const dob = document.getElementById('regDob').value;
+      const department = document.getElementById('regDepartment').value;
+      const room = document.getElementById('regRoom').value;
+
+      // Strict 8-digit User ID validation
+      if (!/^\d{8}$/.test(userId)) {
+        showToast('User ID must be strictly 8 numeric digits only.', 'error');
+        return;
+      }
+      if (!/^\d{10}$/.test(mobile)) {
+        showToast('Please enter a valid 10-digit mobile number.', 'error');
+        return;
+      }
+      if (!username || !dob || !department || !room) {
+        showToast('Please fill in all required employee fields.', 'error');
+        return;
+      }
+
+      const users = getUsers();
+      // Condition: User Not repeated mobile number and user id
+      if (users.some(u => u.userId === userId)) {
+        showToast('This 8-digit User ID is already registered!', 'error');
+        return;
+      }
+      if (users.some(u => u.mobile === mobile)) {
+        showToast('This Mobile Number is already registered!', 'error');
+        return;
+      }
+
+      const newUser = {
+        userId,
+        username,
+        mobile,
+        dob,
+        password: dob, // Default password = Date of Birth
+        department,
+        room,
+        verified: false, // Condition: user verified admin only
+        createdAt: Date.now()
+      };
+
+      users.push(newUser);
+      saveUsers(users);
+
+      // Auto-login user to view pending verification status
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_USER, userId);
+      showToast('Registration complete! Awaiting Admin verification.', 'success');
+      refreshUserPortal();
+    }
+
+    function fillDemoUserLogin() {
+      setUserLoginMethod('otp');
+      document.getElementById('loginMobileInput').value = '9876543210';
+      sendUserLoginOtp();
+    }
+
+    function sendUserLoginOtp() {
+      const mobile = document.getElementById('loginMobileInput').value.trim();
+      if (!/^\d{10}$/.test(mobile)) {
+        showToast('Enter a valid 10-digit registered mobile number.', 'error');
+        return;
+      }
+      const user = getUsers().find(u => u.mobile === mobile);
+      if (!user) {
+        showToast('Mobile number not found. Please complete One-Time Sign Up first.', 'error');
+        return;
+      }
+      document.getElementById('userOtpVerifyBox').classList.remove('hidden');
+      triggerSimulatedSmsOtp(mobile, 'loginOtpInput');
+    }
+
+    function verifyUserOtpLogin() {
+      const mobile = document.getElementById('loginMobileInput').value.trim();
+      const enteredOtp = document.getElementById('loginOtpInput').value.trim();
+
+      if (!activeOtpState.code || enteredOtp !== activeOtpState.code || activeOtpState.mobile !== mobile) {
+        showToast('Invalid 6-digit OTP code. Please check SMS banner.', 'error');
+        return;
+      }
+
+      const user = getUsers().find(u => u.mobile === mobile);
+      if (!user) return;
+
+      dismissSmsBanner();
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_USER, user.userId);
+      showToast(`Welcome back, ${user.username}! Profile loaded.`, 'success');
+      refreshUserPortal();
+    }
+
+    function loginUserWithPassword() {
+      const userId = document.getElementById('loginUserIdInput').value.trim();
+      const pwd = document.getElementById('loginUserDobPwdInput').value;
+
+      if (!/^\d{8}$/.test(userId)) {
+        showToast('Enter your 8-digit User ID.', 'error');
+        return;
+      }
+      const user = getUsers().find(u => u.userId === userId && u.password === pwd);
+      if (!user) {
+        showToast('Invalid User ID or Date of Birth password.', 'error');
+        return;
+      }
+
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_USER, user.userId);
+      showToast(`Signed in as ${user.username}`, 'success');
+      refreshUserPortal();
+    }
+
+    function logoutUser() {
+      sessionStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+      clearInterval(window._cancelCountdownTimer);
+      refreshUserPortal();
+      showToast('Logged out successfully.');
+    }
+
+    // Shift to Meal & Serving Time Mapping
+    function getMealScheduleForShift(shiftValue, compOffMealValue) {
+      if (shiftValue === 'General Shift (9 to 5)') {
+        return { meal: 'Dinner', time: '7:30 PM' };
+      }
+      if (shiftValue === 'First Shift (6 to 2)') {
+        return { meal: 'Dinner', time: '7:30 PM' };
+      }
+      if (shiftValue === 'Second Shift (2 to 10)') {
+        return { meal: 'Breakfast', time: '7:30 AM' };
+      }
+      if (shiftValue === 'Night Shift (10 to 6)') {
+        return { meal: 'Lunch', time: '12:30 PM' };
+      }
+      // Computer Off (Comp Off)
+      const selected = compOffMealValue || 'Lunch';
+      const timeMap = {
+        'Breakfast': '7:30 AM',
+        'Lunch': '12:30 PM',
+        'Dinner': '7:30 PM'
+      };
+      return { meal: selected, time: timeMap[selected] };
+    }
+
+    function handleShiftChange() {
+      const shift = document.getElementById('bookingShiftSelect').value;
+      const compOffBox = document.getElementById('compOffMealBox');
+      if (shift === 'Comp Off (Computer Off)') {
+        compOffBox.classList.remove('hidden');
+      } else {
+        compOffBox.classList.add('hidden');
+      }
+      updateMealPreview();
+    }
+
+    function updateMealPreview() {
+      const shift = document.getElementById('bookingShiftSelect').value;
+      const checkedRadio = document.querySelector('input[name="compOffMeal"]:checked');
+      const compMeal = checkedRadio ? checkedRadio.value : 'Lunch';
+      const schedule = getMealScheduleForShift(shift, compMeal);
+
+      document.getElementById('previewMealType').textContent = schedule.meal;
+      document.getElementById('previewServingTime').textContent = schedule.time;
+    }
+
+    function confirmAndBookToken() {
+      const currentUserId = sessionStorage.getItem(STORAGE_KEYS.SESSION_USER);
+      const user = getUsers().find(u => u.userId === currentUserId);
+      if (!user) return;
+
+      if (!user.verified) {
+        showToast('Only Admin-verified users can book tokens.', 'error');
+        return;
+      }
+
+      const today = getTodayDateString();
+      const tickets = getTickets();
+
+      // Condition: One user one day one ticket only booking
+      const existingTodayTicket = tickets.find(t => t.userId === user.userId && t.date === today && t.status !== 'CANCELLED');
+      if (existingTodayTicket) {
+        showToast('You have already booked a token for today!', 'error');
+        refreshUserPortal();
+        return;
+      }
+
+      // Check balance quota
+      const cfg = getConfig();
+      const activeTodayCount = tickets.filter(t => t.date === today && t.status !== 'CANCELLED').length;
+      if (activeTodayCount >= Number(cfg.dailyQuota)) {
+        showToast('Daily canteen token quota reached!', 'error');
+        return;
+      }
+
+      const shift = document.getElementById('bookingShiftSelect').value;
+      const checkedRadio = document.querySelector('input[name="compOffMeal"]:checked');
+      const compMeal = checkedRadio ? checkedRadio.value : 'Lunch';
+      const schedule = getMealScheduleForShift(shift, compMeal);
+
+      const newTicket = {
+        ticketId: 'TKN-' + Math.floor(100000 + Math.random() * 900000),
+        userId: user.userId,
+        username: user.username,
+        mobile: user.mobile,
+        department: user.department,
+        room: user.room,
+        shift: shift,
+        meal: schedule.meal,
+        servingTime: schedule.time,
+        date: today,
+        bookedAt: Date.now(),
+        status: 'ACTIVE' // ACTIVE | USED | CANCELLED
+      };
+
+      tickets.push(newTicket);
+      saveTickets(tickets);
+
+      showToast('Food Token Confirmed! Booking form locked.', 'success');
+      refreshUserPortal();
+    }
+
+    function refreshUserPortal() {
+      const currentUserId = sessionStorage.getItem(STORAGE_KEYS.SESSION_USER);
+      const authSec = document.getElementById('userAuthSection');
+      const dashSec = document.getElementById('userDashboardSection');
+
+      if (!currentUserId) {
+        authSec.classList.remove('hidden');
+        dashSec.classList.add('hidden');
+        return;
+      }
+
+      const user = getUsers().find(u => u.userId === currentUserId);
+      if (!user) {
+        sessionStorage.removeItem(STORAGE_KEYS.SESSION_USER);
+        authSec.classList.remove('hidden');
+        dashSec.classList.add('hidden');
+        return;
+      }
+
+      authSec.classList.add('hidden');
+      dashSec.classList.remove('hidden');
+
+      // Populate Profile
+      document.getElementById('userAvatarInitial').textContent = user.username.charAt(0).toUpperCase();
+      document.getElementById('dashUserName').textContent = user.username;
+      document.getElementById('dashUserId').textContent = user.userId;
+      document.getElementById('dashUserMobile').textContent = user.mobile;
+      document.getElementById('dashUserDept').textContent = user.department;
+      document.getElementById('dashUserRoom').textContent = user.room;
+      document.getElementById('dashUserDob').textContent = user.dob;
+
+      const badge = document.getElementById('dashUserVerifyBadge');
+      const pendingCard = document.getElementById('userPendingVerificationCard');
+      const bookingCard = document.getElementById('userBookingFormCard');
+      const ticketCard = document.getElementById('userActiveTicketCard');
+
+      if (!user.verified) {
+        badge.textContent = 'Pending Admin';
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800';
+        pendingCard.classList.remove('hidden');
+        bookingCard.classList.add('hidden');
+        ticketCard.classList.add('hidden');
+        return;
+      }
+
+      badge.textContent = 'Verified';
+      badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800';
+      pendingCard.classList.add('hidden');
+
+      // Check if user already has a non-cancelled ticket today
+      const today = getTodayDateString();
+      const todayTicket = getTickets().find(t => t.userId === user.userId && t.date === today && t.status !== 'CANCELLED');
+
+      if (todayTicket) {
+        // Condition: ticket booking Confirm & Complete that process hide
+        bookingCard.classList.add('hidden');
+        ticketCard.classList.remove('hidden');
+        renderUserTicketCard(todayTicket);
+      } else {
+        bookingCard.classList.remove('hidden');
+        ticketCard.classList.add('hidden');
+        handleShiftChange();
+      }
+      lucide.createIcons();
+    }
+
+    function renderUserTicketCard(ticket) {
+      const cfg = getConfig();
+      document.getElementById('ticketBrandHeader').textContent = cfg.systemName;
+      document.getElementById('tktMeal').textContent = ticket.meal;
+      document.getElementById('tktServingTime').textContent = ticket.servingTime;
+      document.getElementById('tktId').textContent = ticket.ticketId;
+      document.getElementById('tktUserId').textContent = ticket.userId;
+      document.getElementById('tktUsername').textContent = ticket.username;
+      document.getElementById('tktDeptRoom').textContent = `${ticket.department} • Room ${ticket.room}`;
+      document.getElementById('tktShift').textContent = ticket.shift;
+      document.getElementById('tktBookedAt').textContent = `${ticket.date} • ${formatDateTime(ticket.bookedAt)}`;
+
+      const pill = document.getElementById('ticketStatusPill');
+      if (ticket.status === 'USED') {
+        pill.textContent = 'VERIFIED / USED';
+        pill.className = 'px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-sky-500/20 text-sky-300 border border-sky-400/30';
+      } else {
+        pill.textContent = 'ACTIVE TOKEN';
+        pill.className = 'px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/30';
+      }
+
+      // Render Scannable QR Code
+      const qrBox = document.getElementById('ticketQrContainer');
+      qrBox.innerHTML = '';
+      const qrPayload = JSON.stringify({
+        ticketId: ticket.ticketId,
+        userId: ticket.userId,
+        date: ticket.date,
+        meal: ticket.meal
+      });
+      new QRCode(qrBox, {
+        text: qrPayload,
+        width: 148,
+        height: 148,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      // Start 1-Hour Cancellation Countdown Timer
+      startUserCancelCountdown(ticket);
+    }
+
+    function startUserCancelCountdown(ticket) {
+      clearInterval(window._cancelCountdownTimer);
+      const ONE_HOUR_MS = 60 * 60 * 1000;
+      const btn = document.getElementById('userCancelTicketBtn');
+      const countdownEl = document.getElementById('cancelCountdownText');
+
+      function updateTimer() {
+        if (ticket.status === 'USED') {
+          btn.disabled = true;
+          countdownEl.textContent = 'Locked (Already Verified)';
+          clearInterval(window._cancelCountdownTimer);
+          return;
+        }
+        const elapsed = Date.now() - ticket.bookedAt;
+        const remaining = ONE_HOUR_MS - elapsed;
+
+        if (remaining <= 0) {
+          btn.disabled = true;
+          countdownEl.textContent = 'Expired (Admin Cancel Only)';
+          clearInterval(window._cancelCountdownTimer);
+        } else {
+          btn.disabled = false;
+          const mins = Math.floor(remaining / 60000);
+          const secs = Math.floor((remaining % 60000) / 1000);
+          countdownEl.textContent = `Remaining: ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+        }
+      }
+
+      updateTimer();
+      window._cancelCountdownTimer = setInterval(updateTimer, 1000);
+    }
+
+    function userCancelOwnTicket() {
+      const currentUserId = sessionStorage.getItem(STORAGE_KEYS.SESSION_USER);
+      const today = getTodayDateString();
+      const tickets = getTickets();
+      const idx = tickets.findIndex(t => t.userId === currentUserId && t.date === today && t.status === 'ACTIVE');
+
+      if (idx === -1) return;
+
+      const ONE_HOUR_MS = 60 * 60 * 1000;
+      if (Date.now() - tickets[idx].bookedAt > ONE_HOUR_MS) {
+        showToast('1-hour user cancellation window has expired!', 'error');
+        refreshUserPortal();
+        return;
+      }
+
+      openConfirmModal(
+        'Cancel Food Token?',
+        'You are within the 1-hour cancellation window. Do you want to cancel your food token?',
+        () => {
+          tickets[idx].status = 'CANCELLED';
+          tickets[idx].cancelledBy = 'USER';
+          saveTickets(tickets);
+          showToast('Your token has been cancelled.', 'success');
+          refreshUserPortal();
+        }
+      );
+    }
+
+    // Generate & Download PDF Ticket
+    function downloadTicketPdf() {
+      const currentUserId = sessionStorage.getItem(STORAGE_KEYS.SESSION_USER);
+      const today = getTodayDateString();
+      const ticket = getTickets().find(t => t.userId === currentUserId && t.date === today && t.status !== 'CANCELLED');
+      if (!ticket) return;
+
+      const cfg = getConfig();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: [95, 155] });
+
+      // Header Banner
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 95, 24, 'F');
+      doc.setTextColor(52, 211, 153);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(cfg.systemName.toUpperCase(), 47.5, 9, { align: 'center' });
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13);
+      doc.text('FOOD TOKEN TICKET', 47.5, 17, { align: 'center' });
+
+      // Ticket Body Info
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(11);
+      doc.text(`${ticket.meal}  |  ${ticket.servingTime}`, 47.5, 33, { align: 'center' });
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      let y = 43;
+      const rows = [
+        ['Token ID:', ticket.ticketId],
+        ['User ID:', ticket.userId],
+        ['Username:', ticket.username],
+        ['Department:', ticket.department],
+        ['Room No:', String(ticket.room)],
+        ['Shift:', ticket.shift],
+        ['Date:', ticket.date],
+        ['Booked At:', formatDateTime(ticket.bookedAt)]
+      ];
+
+      rows.forEach(([label, val]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, 8, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(val), 34, y);
+        y += 6.5;
+      });
+
+      // Embed QR Canvas Image into PDF
+      const qrCanvas = document.querySelector('#ticketQrContainer canvas');
+      if (qrCanvas) {
+        const qrDataUrl = qrCanvas.toDataURL('image/png');
+        doc.addImage(qrDataUrl, 'PNG', 27.5, 98, 40, 40);
+      }
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Valid for current date only. Present QR at counter.', 47.5, 145, { align: 'center' });
+
+      doc.save(`${cfg.systemName.replace(/\s+/g, '_')}_${ticket.ticketId}.pdf`);
+      showToast('Ticket PDF downloaded!', 'success');
+    }
+
+    // =========================================================================
+    // 5. ADMIN END LOGIC (OTP LOGIN, COUNTERS, QR SCANNER, USERS, EXCEL)
+    // =========================================================================
+    function fillDemoAdminLogin() {
+      const cfg = getConfig();
+      document.getElementById('adminLoginId').value = cfg.adminUserId;
+      document.getElementById('adminLoginPwd').value = cfg.adminPassword;
+      initiateAdminOtp();
+    }
+
+    function initiateAdminOtp() {
+      const cfg = getConfig();
+      const id = document.getElementById('adminLoginId').value.trim();
+      const pwd = document.getElementById('adminLoginPwd').value;
+
+      if (id !== cfg.adminUserId || pwd !== cfg.adminPassword) {
+        showToast('Invalid Admin User ID or Password.', 'error');
+        return;
+      }
+
+      document.getElementById('adminOtpBox').classList.remove('hidden');
+      triggerSimulatedSmsOtp(cfg.adminMobile, 'adminOtpInput');
+    }
+
+    function completeAdminLogin() {
+      const cfg = getConfig();
+      const otp = document.getElementById('adminOtpInput').value.trim();
+      if (!activeOtpState.code || otp !== activeOtpState.code || activeOtpState.mobile !== cfg.adminMobile) {
+        showToast('Invalid 6-digit Admin OTP.', 'error');
+        return;
+      }
+      dismissSmsBanner();
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_ADMIN, 'true');
+      showToast('Admin Portal Unlocked!', 'success');
+      refreshAdminPortal();
+    }
+
+    function logoutAdmin() {
+      stopAdminQrCamera();
+      sessionStorage.removeItem(STORAGE_KEYS.SESSION_ADMIN);
+      refreshAdminPortal();
+      showToast('Admin logged out.');
+    }
+
+    function switchAdminTab(tabName) {
+      ['scanner', 'users', 'rooms'].forEach(t => {
+        const view = document.getElementById(`adminView-${t}`);
+        const btn = document.getElementById(`adminTab-${t}`);
+        if (t === tabName) {
+          view.classList.remove('hidden');
+          btn.className = 'py-2 rounded-xl text-xs font-bold bg-slate-900 text-white';
+        } else {
+          view.classList.add('hidden');
+          btn.className = 'py-2 rounded-xl text-xs font-bold text-slate-600';
+        }
+      });
+      if (tabName !== 'scanner') stopAdminQrCamera();
+      if (tabName === 'users') renderAdminUsersList();
+      if (tabName === 'rooms') renderAdminRoomList();
+    }
+
+    function refreshAdminPortal() {
+      const isLoggedIn = sessionStorage.getItem(STORAGE_KEYS.SESSION_ADMIN) === 'true';
+      const authCard = document.getElementById('adminAuthCard');
+      const dash = document.getElementById('adminDashboardContent');
+
+      if (!isLoggedIn) {
+        authCard.classList.remove('hidden');
+        dash.classList.add('hidden');
+        return;
+      }
+
+      authCard.classList.add('hidden');
+      dash.classList.remove('hidden');
+
+      updateAdminCounters();
+      renderAdminTicketsList();
+      renderAdminUsersList();
+      renderAdminRoomList();
+      renderPortalShareQr();
+      lucide.createIcons();
+    }
+
+    function updateAdminCounters() {
+      const cfg = getConfig();
+      const today = getTodayDateString();
+      const activeTodayTickets = getTickets().filter(t => t.date === today && t.status !== 'CANCELLED');
+
+      const breakfastCount = activeTodayTickets.filter(t => t.meal === 'Breakfast').length;
+      const lunchCount = activeTodayTickets.filter(t => t.meal === 'Lunch').length;
+      const dinnerCount = activeTodayTickets.filter(t => t.meal === 'Dinner').length;
+      const totalIssued = activeTodayTickets.length;
+      const quota = Number(cfg.dailyQuota) || 500;
+      const balance = Math.max(0, quota - totalIssued);
+
+      document.getElementById('statBreakfast').textContent = breakfastCount;
+      document.getElementById('statLunch').textContent = lunchCount;
+      document.getElementById('statDinner').textContent = dinnerCount;
+      document.getElementById('statIssuedCount').textContent = totalIssued;
+      document.getElementById('statDailyQuota').textContent = quota;
+      document.getElementById('statBalanceCount').textContent = balance;
+    }
+
+    // QR Camera Scanner
+    function toggleAdminQrCamera() {
+      const readerEl = document.getElementById('adminQrReader');
+      const btn = document.getElementById('toggleCameraBtn');
+
+      if (qrCameraInstance) {
+        stopAdminQrCamera();
+        return;
+      }
+
+      readerEl.classList.remove('hidden');
+      btn.innerHTML = '<i data-lucide="camera-off" class="w-3.5 h-3.5"></i><span>Stop Camera</span>';
+      lucide.createIcons();
+
+      qrCameraInstance = new Html5Qrcode('adminQrReader');
+      qrCameraInstance.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 210, height: 210 } },
+        (decodedText) => {
+          verifyScannedToken(decodedText);
+          stopAdminQrCamera();
+        },
+        () => {}
+      ).catch(err => {
+        showToast('Camera unavailable on this device. Use manual Token ID verification.', 'error');
+        stopAdminQrCamera();
+      });
+    }
+
+    function stopAdminQrCamera() {
+      const readerEl = document.getElementById('adminQrReader');
+      const btn = document.getElementById('toggleCameraBtn');
+      if (qrCameraInstance) {
+        qrCameraInstance.stop().catch(() => {}).finally(() => {
+          qrCameraInstance = null;
+        });
+      }
+      if (readerEl) readerEl.classList.add('hidden');
+      if (btn) {
+        btn.innerHTML = '<i data-lucide="camera" class="w-3.5 h-3.5"></i><span>Start Camera</span>';
+        lucide.createIcons();
+      }
+    }
+
+    // Condition: admin ticket verifying current date only pass
+    function verifyScannedToken(rawInput) {
+      const resultBox = document.getElementById('scanVerificationResult');
+      resultBox.classList.remove('hidden');
+
+      let tokenId = (rawInput || '').trim();
+      try {
+        const parsed = JSON.parse(tokenId);
+        if (parsed.ticketId) tokenId = parsed.ticketId;
+      } catch (e) {
+        // Plain Token ID string
+      }
+
+      if (!tokenId) {
+        resultBox.className = 'rounded-2xl p-3.5 border bg-rose-50 border-rose-200 text-rose-800 text-xs font-bold';
+        resultBox.textContent = 'Please scan a valid QR code or enter a Token ID.';
+        return;
+      }
+
+      const tickets = getTickets();
+      const idx = tickets.findIndex(t => t.ticketId.toUpperCase() === tokenId.toUpperCase());
+
+      if (idx === -1) {
+        resultBox.className = 'rounded-2xl p-3.5 border bg-rose-50 border-rose-200 text-rose-800 text-xs font-bold';
+        resultBox.innerHTML = `INVALID TOKEN: <span class="font-mono">${tokenId}</span> not found in system.`;
+        return;
+      }
+
+      const ticket = tickets[idx];
+      const today = getTodayDateString();
+
+      if (ticket.status === 'CANCELLED') {
+        resultBox.className = 'rounded-2xl p-3.5 border bg-rose-50 border-rose-200 text-rose-800 text-xs font-bold';
+        resultBox.innerHTML = `REJECTED: Token <span class="font-mono">${ticket.ticketId}</span> was CANCELLED.`;
+        return;
+      }
+
+      // Strict Current-Date Only Check
+      if (ticket.date !== today) {
+        resultBox.className = 'rounded-2xl p-3.5 border bg-rose-50 border-rose-200 text-rose-800 text-xs font-bold';
+        resultBox.innerHTML = `DATE MISMATCH REJECTED: Token date (${ticket.date}) does not match current date (${today}).`;
+        return;
+      }
+
+      if (ticket.status === 'USED') {
+        resultBox.className = 'rounded-2xl p-3.5 border bg-amber-50 border-amber-200 text-amber-900 text-xs font-bold';
+        resultBox.innerHTML = `ALREADY REDEEMED: Token <span class="font-mono">${ticket.ticketId}</span> (${ticket.username}) was already verified.`;
+        return;
+      }
+
+      // Mark Verified & Pass
+      tickets[idx].status = 'USED';
+      tickets[idx].verifiedAt = Date.now();
+      saveTickets(tickets);
+
+      resultBox.className = 'rounded-2xl p-3.5 border bg-emerald-50 border-emerald-300 text-emerald-900 text-xs space-y-1';
+      resultBox.innerHTML = `
+        <div class="font-extrabold text-emerald-700 flex items-center gap-1.5">
+          <span>✔ VERIFIED — CURRENT DATE PASS</span>
+        </div>
+        <div><strong>${ticket.username}</strong> (ID: <span class="font-mono">${ticket.userId}</span>)</div>
+        <div>Meal: <strong>${ticket.meal}</strong> (${ticket.servingTime}) • Room ${ticket.room}</div>
+      `;
+      showToast(`Token ${ticket.ticketId} verified & passed!`, 'success');
+      updateAdminCounters();
+      renderAdminTicketsList();
+    }
+
+    function renderAdminTicketsList() {
+      const container = document.getElementById('adminTicketsList');
+      const tickets = getTickets().slice().reverse();
+
+      if (tickets.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No tokens booked yet.</p>';
+        return;
+      }
+
+      container.innerHTML = tickets.map(t => {
+        const statusColors = {
+          ACTIVE: 'bg-emerald-100 text-emerald-800',
+          USED: 'bg-sky-100 text-sky-800',
+          CANCELLED: 'bg-rose-100 text-rose-800'
+        };
+        return `
+          <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono font-bold text-xs text-slate-900">${t.ticketId}</span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold ${statusColors[t.status]}">${t.status}</span>
+              </div>
+              <p class="text-xs font-bold text-slate-800 truncate mt-0.5">${t.username} (${t.userId})</p>
+              <p class="text-[10px] text-slate-500">${t.date} • ${t.meal} (${t.servingTime}) • Room ${t.room}</p>
+            </div>
+            <div class="flex flex-col gap-1 shrink-0">
+              ${t.status === 'ACTIVE' ? `
+                <button onclick="verifyScannedToken('${t.ticketId}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold">Pass</button>
+                <button onclick="adminCancelTicket('${t.ticketId}')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-bold">Cancel</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function adminCancelTicket(ticketId) {
+      openConfirmModal(
+        'Admin Authorized Cancellation',
+        `Cancel token ${ticketId}? Admin cancellation bypasses the 1-hour user restriction.`,
+        () => {
+          const tickets = getTickets();
+          const idx = tickets.findIndex(t => t.ticketId === ticketId);
+          if (idx !== -1) {
+            tickets[idx].status = 'CANCELLED';
+            tickets[idx].cancelledBy = 'ADMIN';
+            saveTickets(tickets);
+            showToast(`Token ${ticketId} cancelled by Admin.`, 'success');
+            updateAdminCounters();
+            renderAdminTicketsList();
+            renderAdminRoomList();
+          }
+        }
+      );
+    }
+
+    function renderAdminUsersList() {
+      const container = document.getElementById('adminUsersList');
+      const users = getUsers();
+
+      if (users.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No registered users.</p>';
+        return;
+      }
+
+      container.innerHTML = users.map(u => `
+        <div class="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-extrabold text-slate-900">${u.username}</span>
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${u.verified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                  ${u.verified ? 'Verified' : 'Pending'}
+                </span>
+              </div>
+              <p class="text-[11px] font-mono text-slate-600 mt-0.5">ID: <strong>${u.userId}</strong> • Mob: <strong>${u.mobile}</strong></p>
+              <p class="text-[10px] text-slate-500">Dept: ${u.department} • Room: ${u.room} • Pass (DOB): <span class="font-mono font-bold text-slate-700">${u.password}</span></p>
+            </div>
+            <button onclick="toggleUserVerification('${u.userId}')" class="px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 ${u.verified ? 'bg-slate-200 text-slate-700' : 'bg-emerald-600 text-white shadow-xs'}">
+              ${u.verified ? 'Revoke' : 'Verify User'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleUserVerification(userId) {
+      const users = getUsers();
+      const idx = users.findIndex(u => u.userId === userId);
+      if (idx !== -1) {
+        users[idx].verified = !users[idx].verified;
+        saveUsers(users);
+        showToast(`User ${users[idx].username} is now ${users[idx].verified ? 'VERIFIED' : 'UNVERIFIED'}.`, 'success');
+        renderAdminUsersList();
+      }
+    }
+
+    function renderAdminRoomList() {
+      const selectedRoom = document.getElementById('adminRoomFilterSelect').value;
+      const container = document.getElementById('adminRoomDetailList');
+      const users = getUsers();
+      const today = getTodayDateString();
+      const tickets = getTickets();
+
+      const filteredUsers = selectedRoom === 'ALL'
+        ? users
+        : users.filter(u => String(u.room) === String(selectedRoom));
+
+      if (filteredUsers.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">No users assigned to this room.</p>';
+        return;
+      }
+
+      container.innerHTML = filteredUsers.map(u => {
+        const userTicket = tickets.find(t => t.userId === u.userId && t.date === today && t.status !== 'CANCELLED');
+        return `
+          <div class="p-3 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded-md bg-slate-900 text-white text-[10px] font-bold">Room ${u.room}</span>
+                <span class="text-xs font-extrabold text-slate-900">${u.username}</span>
+              </div>
+              <p class="text-[11px] font-mono text-slate-600 mt-1">ID: ${u.userId} • ${u.mobile} • ${u.department}</p>
+            </div>
+            <div class="text-right">
+              ${userTicket
+                ? `<span class="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 text-[10px] font-bold block">${userTicket.meal} (${userTicket.status})</span>`
+                : `<span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-500 text-[10px] font-semibold block">No Token Today</span>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Excel Export for Room List Detail
+    function downloadRoomExcel() {
+      const selectedRoom = document.getElementById('adminRoomFilterSelect').value;
+      const users = getUsers();
+      const today = getTodayDateString();
+      const tickets = getTickets();
+
+      const filteredUsers = selectedRoom === 'ALL'
+        ? users
+        : users.filter(u => String(u.room) === String(selectedRoom));
+
+      if (filteredUsers.length === 0) {
+        showToast('No records in selected room to export.', 'error');
+        return;
+      }
+
+      const rows = filteredUsers.map(u => {
+        const tkt = tickets.find(t => t.userId === u.userId && t.date === today && t.status !== 'CANCELLED');
+        return {
+          'Room Number': u.room,
+          'User ID (8-Digit)': u.userId,
+          'Username': u.username,
+          'Mobile Number': u.mobile,
+          'Department': u.department,
+          'Date of Birth': u.dob,
+          'Account Status': u.verified ? 'Verified' : 'Pending',
+          'Today Token ID': tkt ? tkt.ticketId : 'Not Booked',
+          'Shift': tkt ? tkt.shift : '-',
+          'Meal': tkt ? tkt.meal : '-',
+          'Serving Time': tkt ? tkt.servingTime : '-',
+          'Token Status': tkt ? tkt.status : '-'
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Room_User_Details');
+
+      const cfg = getConfig();
+      const roomLabel = selectedRoom === 'ALL' ? 'All_Rooms' : `Room_${selectedRoom.replace(/\s+/g, '_')}`;
+      XLSX.writeFile(workbook, `${cfg.systemName.replace(/\s+/g, '_')}_${roomLabel}_${today}.xlsx`);
+      showToast('Room list Excel downloaded!', 'success');
+    }
+
+    function renderPortalShareQr() {
+      const qrBox = document.getElementById('portalShareQr');
+      const urlText = document.getElementById('portalShareUrlText');
+      if (!qrBox) return;
+      qrBox.innerHTML = '';
+      const bookingUrl = window.location.href.split('#')[0] + '#user';
+      urlText.textContent = bookingUrl;
+      new QRCode(qrBox, {
+        text: bookingUrl,
+        width: 76,
+        height: 76,
+        colorDark: '#0f172a',
+        colorLight: '#f8fafc'
+      });
+    }
+
+    function copyPortalLink() {
+      const bookingUrl = window.location.href.split('#')[0] + '#user';
+      const tempInput = document.createElement('input');
+      tempInput.value = bookingUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('Booking link copied to clipboard!', 'success');
+    }
+
+    // =========================================================================
+    // 6. DEVELOPER END LOGIC (siva@521 / Siv@521)
+    // =========================================================================
+    function fillDemoDevLogin() {
+      document.getElementById('devLoginId').value = DEV_MASTER_CREDENTIALS.userId;
+      document.getElementById('devLoginPwd').value = DEV_MASTER_CREDENTIALS.password;
+      loginDeveloper();
+    }
+
+    function loginDeveloper() {
+      const id = document.getElementById('devLoginId').value.trim();
+      const pwd = document.getElementById('devLoginPwd').value;
+
+      if (id !== DEV_MASTER_CREDENTIALS.userId || pwd !== DEV_MASTER_CREDENTIALS.password) {
+        showToast('Access Denied: Invalid Developer User ID or Password.', 'error');
+        return;
+      }
+
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_DEV, 'true');
+      showToast('Developer Root Access Granted!', 'success');
+      refreshDevPortal();
+    }
+
+    function logoutDeveloper() {
+      sessionStorage.removeItem(STORAGE_KEYS.SESSION_DEV);
+      refreshDevPortal();
+      showToast('Developer portal locked.');
+    }
+
+    function refreshDevPortal() {
+      const isLogged = sessionStorage.getItem(STORAGE_KEYS.SESSION_DEV) === 'true';
+      const authCard = document.getElementById('devAuthCard');
+      const dash = document.getElementById('devDashboardContent');
+
+      if (!isLogged) {
+        authCard.classList.remove('hidden');
+        dash.classList.add('hidden');
+        return;
+      }
+
+      authCard.classList.add('hidden');
+      dash.classList.remove('hidden');
+
+      const cfg = getConfig();
+      document.getElementById('devSystemNameInput').value = cfg.systemName;
+      document.getElementById('devDailyQuotaInput').value = cfg.dailyQuota;
+      document.getElementById('devAdminIdInput').value = cfg.adminUserId;
+      document.getElementById('devAdminPwdInput').value = cfg.adminPassword;
+      document.getElementById('devAdminMobileInput').value = cfg.adminMobile;
+      lucide.createIcons();
+    }
+
+    function saveDevBranding() {
+      const newName = document.getElementById('devSystemNameInput').value.trim();
+      const newQuota = parseInt(document.getElementById('devDailyQuotaInput').value, 10);
+
+      if (!newName) {
+        showToast('System name cannot be empty.', 'error');
+        return;
+      }
+      if (isNaN(newQuota) || newQuota < 1) {
+        showToast('Enter a valid daily token quota.', 'error');
+        return;
+      }
+
+      const cfg = getConfig();
+      cfg.systemName = newName;
+      cfg.dailyQuota = newQuota;
+      saveConfig(cfg);
+      showToast(`System updated to "${newName}"!`, 'success');
+    }
+
+    function saveDevAdminConfig() {
+      const adminId = document.getElementById('devAdminIdInput').value.trim();
+      const adminPwd = document.getElementById('devAdminPwdInput').value.trim();
+      const adminMob = document.getElementById('devAdminMobileInput').value.trim();
+
+      if (!adminId || !adminPwd) {
+        showToast('Admin User ID and Password are required.', 'error');
+        return;
+      }
+      if (!/^\d{10}$/.test(adminMob)) {
+        showToast('Admin Mobile Number must be 10 digits.', 'error');
+        return;
+      }
+
+      const cfg = getConfig();
+      cfg.adminUserId = adminId;
+      cfg.adminPassword = adminPwd;
+      cfg.adminMobile = adminMob;
+      saveConfig(cfg);
+      showToast('Admin ID, Password & OTP Mobile updated!', 'success');
+    }
+
+    function resetSystemToDefaults() {
+      openConfirmModal(
+        'Reset Entire System?',
+        'This will clear all users, tokens, and custom settings back to factory defaults.',
+        () => {
+          localStorage.removeItem(STORAGE_KEYS.CONFIG);
+          localStorage.removeItem(STORAGE_KEYS.USERS);
+          localStorage.removeItem(STORAGE_KEYS.TICKETS);
+          sessionStorage.clear();
+          initDefaultStorage();
+          applySystemBranding();
+          switchPortal('user');
+          showToast('System restored to factory defaults.', 'success');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 7. DOWNLOAD 3 SEPARATE STANDALONE HTML FILES
+    // =========================================================================
+    function openDownloadFilesModal() {
+      document.getElementById('filesModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+    function closeDownloadFilesModal() {
+      document.getElementById('filesModal').classList.add('hidden');
+    }
+
+    function downloadStandalonePortal(targetPortal) {
+      const fileNames = {
+        user: 'user-end.html',
+        admin: 'admin-end.html',
+        dev: 'developer-end.html'
+      };
+      const portalTitles = {
+        user: 'User End — Food Token Booking',
+        admin: 'Admin End — Canteen Verification & Reports',
+        dev: 'Developer End — Master System Control'
+      };
+
+      // Clone current full document HTML and inject a default boot portal script
+      let fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const bootPatch = `<script>window.__DEFAULT_PORTAL__ = "${targetPortal}";<\/script>\n</head>`;
+      fullHtml = fullHtml.replace('</head>', bootPatch);
+      fullHtml = fullHtml.replace(/<title>.*?<\/title>/, `<title>${getConfig().systemName} — ${portalTitles[targetPortal]}</title>`);
+
+      const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileNames[targetPortal];
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(`Downloaded ${fileNames[targetPortal]}!`, 'success');
+    }
+
+    // =========================================================================
+    // 8. INITIALIZATION ON LOAD
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initDefaultStorage();
+      applySystemBranding();
+
+      // Support hash routing or standalone file default portal
+      const hash = window.location.hash.replace('#', '');
+      const initialPortal = window.__DEFAULT_PORTAL__ || (['user', 'admin', 'dev'].includes(hash) ? hash : 'user');
+      switchPortal(initialPortal);
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
